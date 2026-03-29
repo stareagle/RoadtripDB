@@ -52,9 +52,12 @@ class RoadtripApp:
         self._editing_idx: int | None = None
         # Dirty flag — set when data changes, cleared on save/export
         self._dirty = False
+        # Track the active file path for saving
+        self._current_file_path: str | None = None
 
         self._apply_theme()
         self._build_ui()
+        self._update_title()
 
         # Intercept window close to check for unsaved changes
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
@@ -304,10 +307,15 @@ class RoadtripApp:
                                   style="Accent.TButton", command=self._import_trip)
         self.import_btn.pack(side="right", padx=(0, 8))
 
-        self.export_btn = ttk.Button(btn_frame, text="💾  Save Trip",
-                                 style="Accent.TButton", command=self._export_trip,
+        self.save_as_btn = ttk.Button(btn_frame, text="💾  Save As...",
+                                 style="Accent.TButton", command=self._save_as_trip,
                                  state="disabled")
-        self.export_btn.pack(side="right")
+        self.save_as_btn.pack(side="right")
+
+        self.export_btn = ttk.Button(btn_frame, text="💾  Save",
+                                 style="Accent.TButton", command=self._save_trip,
+                                 state="disabled")
+        self.export_btn.pack(side="right", padx=(0, 8))
 
         # ── Table ───────────────────────────────────────────────────────
         table_frame = ttk.Frame(self.root, style="Card.TFrame")
@@ -644,32 +652,15 @@ class RoadtripApp:
             self._dirty = False
             self._update_status()
 
-    def _export_trip(self) -> None:
-        """Save the trip (start time + stops) to a JSON file."""
-        if len(self.df) == 0:
-            messagebox.showinfo("Nothing to save",
-                                 "Add some entries first.")
-            return
-
-        from tkinter import filedialog
-        path = filedialog.asksaveasfilename(
-            defaultextension=".json",
-            filetypes=[("Trip files", "*.json"), ("All files", "*.*")],
-            initialfile="roadtrip.json",
-        )
-        if not path:
-            return
-
-        # Build the trip start string from spinboxes
+    def _save_to_path(self, path: str) -> bool:
+        """Helper to serialize data and write to file."""
         try:
             start_dt = self._parse_start_time()
             start_str = start_dt.strftime("%Y-%m-%d %H:%M")
         except ValueError:
-            return
+            return False
 
-        # Convert DataFrame rows to list of dicts
         stops = self.df.to_dicts()
-
         trip_data = {
             "trip_start": start_str,
             "stops": stops,
@@ -678,10 +669,47 @@ class RoadtripApp:
         with open(path, "w") as f:
             json.dump(trip_data, f, indent=2)
 
+        self._current_file_path = path
         self._dirty = False
+        self._update_title()
         self._update_status()
-        messagebox.showinfo("Saved",
-                             f"Trip saved ({len(self.df)} stops) to:\n{path}")
+        return True
+
+    def _save_trip(self) -> None:
+        """Save to the current path, or prompt if no path exists."""
+        if len(self.df) == 0:
+            messagebox.showinfo("Nothing to save", "Add some entries first.")
+            return
+
+        if self._current_file_path:
+            if self._save_to_path(self._current_file_path):
+                messagebox.showinfo("Saved", f"Trip saved ({len(self.df)} stops) to:\n{self._current_file_path}")
+        else:
+            self._save_as_trip()
+
+    def _save_as_trip(self) -> None:
+        """Prompt for a save location and save the trip."""
+        if len(self.df) == 0:
+            messagebox.showinfo("Nothing to save", "Add some entries first.")
+            return
+
+        from tkinter import filedialog
+        
+        initialfile = "roadtrip.json"
+        if self._current_file_path:
+            import os
+            initialfile = os.path.basename(self._current_file_path)
+
+        path = filedialog.asksaveasfilename(
+            defaultextension=".json",
+            filetypes=[("Trip files", "*.json"), ("All files", "*.*")],
+            initialfile=initialfile,
+        )
+        if not path:
+            return
+
+        if self._save_to_path(path):
+            messagebox.showinfo("Saved", f"Trip saved ({len(self.df)} stops) to:\n{path}")
 
     def _import_trip(self) -> None:
         """Load a trip (start time + stops) from a JSON file."""
@@ -776,9 +804,11 @@ class RoadtripApp:
         )
 
         self.df = imported
+        self._current_file_path = path
         self._recalculate_times()
         self._refresh_treeview()
         self._dirty = False
+        self._update_title()
         self._update_status()
 
         messagebox.showinfo("Loaded",
@@ -1003,6 +1033,16 @@ class RoadtripApp:
             self._edit_widget = None
             widget.destroy()
 
+    def _update_title(self) -> None:
+        """Update window title to reflect current file and dirty state."""
+        base = "RoadtripDB"
+        if self._current_file_path:
+            import os
+            base += f" - {os.path.basename(self._current_file_path)}"
+        if self._dirty:
+            base += " *"
+        self.root.title(base)
+
     def _update_status(self) -> None:
         """Refresh the status bar text and toggle button states."""
         n = len(self.df)
@@ -1019,22 +1059,24 @@ class RoadtripApp:
         else:
             state = "!disabled" if n > 0 else "disabled"
             
-        for btn in (self.insert_btn, self.edit_btn, self.bold_btn, self.delete_btn, self.clear_btn, self.export_btn):
+        for btn in (self.insert_btn, self.edit_btn, self.bold_btn, self.delete_btn, self.clear_btn, self.export_btn, self.save_as_btn):
             btn.state([state])
+            
+        self._update_title()
 
     def _on_close(self) -> None:
         """Handle window close — prompt to save if there are unsaved changes."""
         if self._dirty and len(self.df) > 0:
             answer = messagebox.askyesnocancel(
                 "Unsaved changes",
-                "You have unsaved changes.\n\nDo you want to export before closing?",
+                "You have unsaved changes.\n\nDo you want to save before closing?",
             )
             if answer is None:
                 # Cancel — do not close
                 return
             if answer:
                 # Yes — export first, then close (unless user cancels the dialog)
-                self._export_trip()
+                self._save_trip()
                 if self._dirty:
                     # User cancelled the save dialog — stay open
                     return
