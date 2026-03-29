@@ -47,6 +47,8 @@ class RoadtripApp:
         self._readonly_cols = {"stopnum", "arrival", "departure"}
         # Track the active edit widget
         self._edit_widget: tk.Entry | None = None
+        # Track form edit index for the main edit button feature
+        self._editing_idx: int | None = None
         # Dirty flag — set when data changes, cleared on save/export
         self._dirty = False
 
@@ -256,20 +258,31 @@ class RoadtripApp:
         input_frame.columnconfigure((0, 1, 2, 3), weight=1)
 
         # Bind Enter key to add entry
-        self.root.bind("<Return>", lambda e: self._add_entry())
+        self.root.bind("<Return>", self._handle_return)
 
         # ── Buttons ─────────────────────────────────────────────────────
         btn_frame = ttk.Frame(self.root)
         btn_frame.pack(fill="x", padx=24, pady=8)
 
-        add_btn = ttk.Button(btn_frame, text="＋  Add Entry",
+        self.action_frame = ttk.Frame(btn_frame)
+        self.action_frame.pack(side="left", padx=(0, 8))
+
+        self.add_btn = ttk.Button(self.action_frame, text="＋  Add Entry",
                               style="Accent.TButton", command=self._add_entry)
-        add_btn.pack(side="left", padx=(0, 8))
+        self.add_btn.pack(side="left")
+
+        self.cancel_edit_btn = ttk.Button(self.action_frame, text="✕  Cancel",
+                                 style="Clear.TButton", command=self._cancel_edit_entry)
 
         self.insert_btn = ttk.Button(btn_frame, text="⤵  Insert",
                                  style="Accent.TButton", command=self._insert_entry,
                                  state="disabled")
         self.insert_btn.pack(side="left", padx=(0, 8))
+
+        self.edit_btn = ttk.Button(btn_frame, text="✏️  Edit",
+                                style="Accent.TButton", command=self._start_edit_entry,
+                                state="disabled")
+        self.edit_btn.pack(side="left", padx=(0, 8))
 
         self.delete_btn = ttk.Button(btn_frame, text="🗑  Delete",
                                  style="Clear.TButton", command=self._delete_entry,
@@ -413,6 +426,76 @@ class RoadtripApp:
             entry.delete(0, "end")
             entry.insert(0, placeholders[key])
             entry.configure(foreground="#6a6a80")
+
+    def _handle_return(self, event: tk.Event) -> None:
+        if self._editing_idx is not None:
+            self._save_edit_entry()
+        else:
+            self._add_entry()
+
+    def _start_edit_entry(self) -> None:
+        """Start editing the selected row using the main input form."""
+        selected = self.tree.selection()
+        if not selected:
+            messagebox.showinfo("No row selected", "Select a row in the table to edit.")
+            return
+
+        item = selected[0]
+        self._editing_idx = self.tree.index(item)
+
+        # Clear inputs to get placeholders, then fill with row data
+        self._clear_inputs()
+        row = self.df.to_dicts()[self._editing_idx]
+
+        for key, entry in self.entries.items():
+            entry.delete(0, "end")
+            val = str(row[key])
+            entry.insert(0, val)
+            if val:
+                entry.configure(foreground="#e2e2f0")
+
+        self.add_btn.configure(text="✓  Save Edit", command=self._save_edit_entry)
+        self.cancel_edit_btn.pack(side="left", padx=(8, 0))
+        self.entries["Place Name"].focus_set()
+        self._update_status()
+
+    def _save_edit_entry(self) -> None:
+        """Save form changes back to the DataFrame."""
+        if self._editing_idx is None:
+            return
+
+        result = self._validate_inputs()
+        if result is None:
+            return
+        
+        raw, dist = result
+        new_row = self._make_new_row(raw, dist)
+
+        top = self.df.slice(0, self._editing_idx)
+        bottom = self.df.slice(self._editing_idx + 1)
+        self.df = pl.concat([top, new_row, bottom])
+
+        self._recalculate_times()
+        self._refresh_treeview()
+        self._clear_inputs()
+
+        self._dirty = True
+        self._cancel_edit_entry(clear=False)
+        self._update_status()
+
+        print("\n── Saved Edit to DataFrame ───────────────────────")
+        print(self.df)
+        print("──────────────────────────────────────────────────\n")
+
+    def _cancel_edit_entry(self, clear: bool = True) -> None:
+        """Cancel the current edit or return the UI state form after save."""
+        self._editing_idx = None
+        if clear:
+            self._clear_inputs()
+        
+        self.add_btn.configure(text="＋  Add Entry", command=self._add_entry)
+        self.cancel_edit_btn.pack_forget()
+        self._update_status()
 
     def _add_entry(self) -> None:
         """Validate inputs and append a new row to the DataFrame + table."""
@@ -889,13 +972,18 @@ class RoadtripApp:
         n = len(self.df)
         word = "entry" if n == 1 else "entries"
         dirty_marker = "  •  Unsaved changes" if self._dirty else ""
+        editing_marker = "  |  Editing row" if getattr(self, "_editing_idx", None) is not None else ""
         self.status_var.set(
-            f"{n} {word}  |  Double-click to edit  |  Right-click to delete{dirty_marker}"
+            f"{n} {word}  |  Double-click to edit  |  Right-click to delete{dirty_marker}{editing_marker}"
         )
 
         # Enable / disable buttons that require grid data
-        state = "!disabled" if n > 0 else "disabled"
-        for btn in (self.insert_btn, self.delete_btn, self.clear_btn, self.export_btn):
+        if getattr(self, "_editing_idx", None) is not None:
+            state = "disabled"
+        else:
+            state = "!disabled" if n > 0 else "disabled"
+            
+        for btn in (self.insert_btn, self.edit_btn, self.delete_btn, self.clear_btn, self.export_btn):
             btn.state([state])
 
     def _on_close(self) -> None:

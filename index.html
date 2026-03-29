@@ -433,8 +433,10 @@
 
   <!-- Buttons -->
   <div class="btn-bar">
-    <button type="button" id="btnAdd" class="btn btn-accent" onclick="addEntry()">＋ Add</button>
+    <button type="button" id="btnAdd" class="btn btn-accent" onclick="handleEnterAction()">＋ Add</button>
+    <button type="button" id="btnCancelEdit" class="btn btn-danger" style="display:none;" onclick="cancelFormEdit()">✕ Cancel</button>
     <button type="button" id="btnInsert" class="btn btn-accent" disabled onclick="insertEntry()">⤵ Insert</button>
+    <button type="button" id="btnEdit" class="btn btn-accent" disabled onclick="startFormEdit()">✏️ Edit</button>
     <button type="button" id="btnDelete" class="btn btn-danger" disabled onclick="deleteEntry()">🗑 Delete</button>
     <button type="button" id="btnClear" class="btn btn-danger" disabled onclick="confirmDialog('Clear All','Remove all entries?',clearAll)">✕ Clear All</button>
     <div class="btn-spacer"></div>
@@ -491,6 +493,8 @@ let stops = [];          // Array of { place, travelTime, stopTime, distance }
 let selectedIndex = -1;  // Currently selected row (-1 = none)
 let dirty = false;
 let editingCell = null;  // { rowIdx, field } if a cell is being edited
+let isEditingForm = false;
+let formEditIndex = -1;
 
 // ── DOM refs ───────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
@@ -506,7 +510,9 @@ const inputTravel   = $('inputTravel');
 const inputStop     = $('inputStop');
 
 const btnAdd    = $('btnAdd');
+const btnCancelEdit = $('btnCancelEdit');
 const btnInsert = $('btnInsert');
+const btnEdit   = $('btnEdit');
 const btnDelete = $('btnDelete');
 const btnClear  = $('btnClear');
 const btnSave   = $('btnSave');
@@ -533,7 +539,7 @@ function init() {
 
   // Enter key in input fields → add entry
   [inputPlace, inputDistance, inputTravel, inputStop].forEach(el => {
-    el.addEventListener('keydown', e => { if (e.key === 'Enter') addEntry(); });
+    el.addEventListener('keydown', e => { if (e.key === 'Enter') handleEnterAction(); });
   });
 
   // Recalculate times when start time changes
@@ -629,6 +635,11 @@ function clearInputs() {
 }
 
 // ── CRUD Actions ───────────────────────────────────────────────────────
+function handleEnterAction() {
+  if (isEditingForm) saveFormEdit();
+  else addEntry();
+}
+
 function addEntry() {
   const entry = validateInputs();
   if (!entry) return;
@@ -653,6 +664,56 @@ function insertEntry() {
   dirty = true;
   updateStatus();
   inputPlace.focus();
+}
+
+function startFormEdit() {
+  if (selectedIndex < 0) { toast('Select a row first'); return; }
+  
+  formEditIndex = selectedIndex;
+  const stop = stops[formEditIndex];
+  isEditingForm = true;
+  
+  inputPlace.value = stop.place;
+  inputDistance.value = stop.distance;
+  inputTravel.value = stop.travelTime;
+  inputStop.value = stop.stopTime;
+  
+  btnAdd.innerHTML = '✓ Save Edit';
+  btnCancelEdit.style.display = '';
+  
+  updateStatus();
+  inputPlace.focus();
+}
+
+function saveFormEdit() {
+  if (!isEditingForm || formEditIndex < 0) return;
+  const entry = validateInputs();
+  if (!entry) return;
+  
+  stops[formEditIndex] = entry;
+  
+  isEditingForm = false;
+  formEditIndex = -1;
+  btnAdd.innerHTML = '＋ Add';
+  btnCancelEdit.style.display = 'none';
+  
+  recalculate();
+  render();
+  clearInputs();
+  dirty = true;
+  updateStatus();
+}
+
+function cancelFormEdit() {
+  if (!isEditingForm) return;
+  isEditingForm = false;
+  formEditIndex = -1;
+  
+  btnAdd.innerHTML = '＋ Add';
+  btnCancelEdit.style.display = 'none';
+  
+  clearInputs();
+  updateStatus();
 }
 
 function deleteEntry() {
@@ -956,10 +1017,19 @@ function tabToNextCell(backward) {
 // ── Status & Button States ─────────────────────────────────────────────
 function updateBtnStates() {
   const hasData = stops.length > 0;
-  btnInsert.disabled = !hasData;
-  btnDelete.disabled = !hasData;
-  btnClear.disabled  = !hasData;
-  btnSave.disabled   = !hasData;
+  if (isEditingForm) {
+    btnInsert.disabled = true;
+    btnEdit.disabled = true;
+    btnDelete.disabled = true;
+    btnClear.disabled = true;
+    btnSave.disabled = true;
+  } else {
+    btnInsert.disabled = !hasData;
+    btnEdit.disabled = !hasData;
+    btnDelete.disabled = !hasData;
+    btnClear.disabled  = !hasData;
+    btnSave.disabled   = !hasData;
+  }
 }
 
 function updateStatus() {
@@ -967,6 +1037,7 @@ function updateStatus() {
   const word = n === 1 ? 'entry' : 'entries';
   let text = `${n} ${word} &nbsp;|&nbsp; Tap a cell to edit`;
   if (dirty) text += ` <span class="unsaved">&nbsp;• Unsaved changes</span>`;
+  if (isEditingForm) text += ` &nbsp;|&nbsp; Editing row`;
   statusBar.innerHTML = text;
   updateBtnStates();
 }
