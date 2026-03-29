@@ -447,8 +447,9 @@
     <button type="button" id="btnDelete" class="btn btn-danger" disabled onclick="deleteEntry()">🗑 Delete</button>
     <button type="button" id="btnClear" class="btn btn-danger" disabled onclick="confirmDialog('Clear All','Remove all entries?',clearAll)">✕ Clear All</button>
     <div class="btn-spacer"></div>
-    <button type="button" id="btnSave" class="btn btn-accent" disabled onclick="saveTrip()">💾 Save Trip</button>
-    <button type="button" id="btnLoad" class="btn btn-accent" onclick="document.getElementById('fileInput').click()">📂 Load Trip</button>
+    <button type="button" id="btnSaveAs" class="btn btn-accent" disabled onclick="saveAsTrip()">💾 Save As</button>
+    <button type="button" id="btnSave" class="btn btn-accent" disabled onclick="saveTrip()">💾 Save</button>
+    <button type="button" id="btnLoad" class="btn btn-accent" onclick="loadTripPicker()">📂 Load Trip</button>
   </div>
 
   <!-- Table -->
@@ -502,6 +503,7 @@ let dirty = false;
 let editingCell = null;  // { rowIdx, field } if a cell is being edited
 let isEditingForm = false;
 let formEditIndex = -1;
+let currentFileHandle = null; // null if not supported or not loaded from File System API
 
 // ── DOM refs ───────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
@@ -523,6 +525,7 @@ const btnEdit   = $('btnEdit');
 const btnBold   = $('btnBold');
 const btnDelete = $('btnDelete');
 const btnClear  = $('btnClear');
+const btnSaveAs = $('btnSaveAs');
 const btnSave   = $('btnSave');
 const btnLoad   = $('btnLoad');
 
@@ -755,9 +758,7 @@ function clearAll() {
 }
 
 // ── Save / Load ────────────────────────────────────────────────────────
-function saveTrip() {
-  if (stops.length === 0) { toast('Add some entries first'); return; }
-
+function getTripJSON() {
   const startDt = getStartTime();
   const tripData = {
     trip_start: formatDatetime(startDt),
@@ -771,11 +772,12 @@ function saveTrip() {
       "Is Bold": s.isBold || false
     })),
   };
+  return JSON.stringify(tripData, null, 2);
+}
 
-  const json = JSON.stringify(tripData, null, 2);
+function fallbackSaveAs(json) {
   const blob = new Blob([json], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
-
   const a = document.createElement('a');
   a.href = url;
   a.download = 'roadtrip.json';
@@ -783,69 +785,149 @@ function saveTrip() {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
 
-  dirty = false;
-  updateStatus();
-  toast(`Trip saved (${stops.length} stops)`);
+async function saveTrip() {
+  if (stops.length === 0) { toast('Add some entries first'); return; }
+  const json = getTripJSON();
+
+  if (window.showSaveFilePicker && currentFileHandle) {
+    try {
+      const writable = await currentFileHandle.createWritable();
+      await writable.write(json);
+      await writable.close();
+      dirty = false;
+      updateStatus();
+      toast(`Trip saved (${stops.length} stops)`);
+      return;
+    } catch (err) {
+      if (err.name !== 'AbortError') toast('Save failed: ' + err.message);
+      return;
+    }
+  }
+
+  // Fallback or no handle
+  if (window.showSaveFilePicker) {
+      await saveAsTrip();
+  } else {
+      fallbackSaveAs(json);
+      dirty = false;
+      updateStatus();
+      toast(`Trip saved (${stops.length} stops)`);
+  }
+}
+
+async function saveAsTrip() {
+  if (stops.length === 0) { toast('Add some entries first'); return; }
+  const json = getTripJSON();
+
+  if (window.showSaveFilePicker) {
+    try {
+      const handle = await window.showSaveFilePicker({
+        types: [{
+          description: 'JSON Files',
+          accept: { 'application/json': ['.json'] },
+        }],
+      });
+      const writable = await handle.createWritable();
+      await writable.write(json);
+      await writable.close();
+      currentFileHandle = handle;
+      dirty = false;
+      updateStatus();
+      toast(`Trip saved (${stops.length} stops)`);
+    } catch (err) {
+      if (err.name !== 'AbortError') toast('Save As failed: ' + err.message);
+    }
+  } else {
+    fallbackSaveAs(json);
+    dirty = false;
+    updateStatus();
+    toast(`Trip saved (${stops.length} stops)`);
+  }
+}
+
+async function loadTripPicker() {
+  if (window.showOpenFilePicker) {
+    try {
+      const [handle] = await window.showOpenFilePicker({
+        types: [{
+          description: 'JSON Files',
+          accept: { 'application/json': ['.json'] },
+        }],
+        multiple: false
+      });
+      const file = await handle.getFile();
+      const text = await file.text();
+      processLoadedTrip(text);
+      currentFileHandle = handle;
+    } catch (err) {
+      if (err.name !== 'AbortError') toast('Load failed: ' + err.message);
+    }
+  } else {
+    fileInput.click();
+  }
+}
+
+function processLoadedTrip(jsonText) {
+  try {
+    const data = JSON.parse(jsonText);
+    if (!data.stops || !Array.isArray(data.stops)) {
+      toast('Invalid file: no stops found');
+      return;
+    }
+
+    // Restore trip start
+    if (data.trip_start) {
+      const parts = data.trip_start.match(/(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})/);
+      if (parts) {
+        startYear.value   = parts[1];
+        startMonth.value  = parts[2];
+        startDay.value    = parts[3];
+        startHour.value   = parts[4];
+        startMinute.value = parts[5];
+      }
+    }
+
+    const required = ['Place Name', 'Travel Time', 'Stop Time', 'Distance (mi)'];
+    const firstStop = data.stops[0] || {};
+    const missing = required.filter(k => !(k in firstStop));
+    if (missing.length && data.stops.length > 0) {
+      toast(`Missing fields: ${missing.join(', ')}`);
+      return;
+    }
+
+    stops = data.stops.map(s => ({
+      place:      s['Place Name']    || '',
+      travelTime: String(s['Travel Time'] || '0:00'),
+      stopTime:   String(s['Stop Time']   || '0:00'),
+      distance:   parseFloat(s['Distance (mi)']) || 0,
+      arrival:    s['Arrival Time']  || '',
+      departure:  s['Departure Time'] || '',
+      isBold:     s['Is Bold'] === true,
+    }));
+
+    selectedIndex = -1;
+    recalculate();
+    render();
+    dirty = false;
+    updateStatus();
+    toast(`Trip loaded (${stops.length} stops)`);
+
+  } catch (err) {
+    toast('Could not read file: ' + err.message);
+  }
 }
 
 function loadTrip(e) {
   const file = e.target.files[0];
   if (!file) return;
-  fileInput.value = '';  // reset so same file can be loaded again
+  fileInput.value = '';  
 
   const reader = new FileReader();
   reader.onload = ev => {
-    try {
-      const data = JSON.parse(ev.target.result);
-      if (!data.stops || !Array.isArray(data.stops)) {
-        toast('Invalid file: no stops found');
-        return;
-      }
-
-      // Restore trip start
-      if (data.trip_start) {
-        // Format: "YYYY-MM-DD HH:MM"
-        const parts = data.trip_start.match(/(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})/);
-        if (parts) {
-          startYear.value   = parts[1];
-          startMonth.value  = parts[2];
-          startDay.value    = parts[3];
-          startHour.value   = parts[4];
-          startMinute.value = parts[5];
-        }
-      }
-
-      // Validate required fields
-      const required = ['Place Name', 'Travel Time', 'Stop Time', 'Distance (mi)'];
-      const firstStop = data.stops[0] || {};
-      const missing = required.filter(k => !(k in firstStop));
-      if (missing.length && data.stops.length > 0) {
-        toast(`Missing fields: ${missing.join(', ')}`);
-        return;
-      }
-
-      // Build internal stops array
-      stops = data.stops.map(s => ({
-        place:      s['Place Name']    || '',
-        travelTime: String(s['Travel Time'] || '0:00'),
-        stopTime:   String(s['Stop Time']   || '0:00'),
-        distance:   parseFloat(s['Distance (mi)']) || 0,
-        arrival:    s['Arrival Time']  || '',
-        departure:  s['Departure Time'] || '',
-        isBold:     s['Is Bold'] === true,
-      }));
-
-      selectedIndex = -1;
-      recalculate();
-      render();
-      dirty = false;
-      updateStatus();
-      toast(`Trip loaded (${stops.length} stops)`);
-
-    } catch (err) {
-      toast('Could not read file: ' + err.message);
-    }
+    processLoadedTrip(ev.target.result);
+    currentFileHandle = null;
   };
   reader.readAsText(file);
 }
@@ -1042,6 +1124,7 @@ function updateBtnStates() {
     btnBold.disabled = true;
     btnDelete.disabled = true;
     btnClear.disabled = true;
+    btnSaveAs.disabled = true;
     btnSave.disabled = true;
   } else {
     btnInsert.disabled = !hasData;
@@ -1049,6 +1132,7 @@ function updateBtnStates() {
     btnBold.disabled = !hasData;
     btnDelete.disabled = !hasData;
     btnClear.disabled  = !hasData;
+    btnSaveAs.disabled = !hasData;
     btnSave.disabled   = !hasData;
   }
 }
