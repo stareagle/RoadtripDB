@@ -180,8 +180,14 @@
     .btn-bar {
       display: flex;
       flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 24px;
+    }
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
       gap: 8px;
-      padding: 8px 24px;
     }
     .btn {
       display: inline-flex;
@@ -219,7 +225,6 @@
       color: #fff;
     }
     .btn-danger:not(:disabled):hover { background: var(--danger-hover); }
-    .btn-spacer { flex: 1; }
 
     /* ── Table ─────────────────────────────────────────────────── */
     .table-wrap {
@@ -439,17 +444,20 @@
 
   <!-- Buttons -->
   <div class="btn-bar">
-    <button type="button" id="btnAdd" class="btn btn-accent" onclick="handleEnterAction()">＋ Add</button>
-    <button type="button" id="btnCancelEdit" class="btn btn-danger" style="display:none;" onclick="cancelFormEdit()">✕ Cancel</button>
-    <button type="button" id="btnInsert" class="btn btn-accent" disabled onclick="insertEntry()">⤵ Insert</button>
-    <button type="button" id="btnEdit" class="btn btn-accent" disabled onclick="startFormEdit()">✏️ Edit</button>
-    <button type="button" id="btnBold" class="btn btn-accent" disabled onclick="toggleBold()">🅱️ Bold</button>
-    <button type="button" id="btnDelete" class="btn btn-danger" disabled onclick="deleteEntry()">🗑 Delete</button>
-    <button type="button" id="btnClear" class="btn btn-danger" disabled onclick="confirmDialog('Clear All','Remove all entries?',clearAll)">✕ Clear All</button>
-    <div class="btn-spacer"></div>
-    <button type="button" id="btnSaveAs" class="btn btn-accent" disabled onclick="saveAsTrip()">💾 Save As</button>
-    <button type="button" id="btnSave" class="btn btn-accent" disabled onclick="saveTrip()">💾 Save</button>
-    <button type="button" id="btnLoad" class="btn btn-accent" onclick="loadTripPicker()">📂 Load Trip</button>
+    <div class="btn-group">
+      <button type="button" id="btnAdd" class="btn btn-accent" onclick="handleEnterAction()">＋ Add</button>
+      <button type="button" id="btnCancelEdit" class="btn btn-danger" style="display:none;" onclick="cancelFormEdit()">✕ Cancel</button>
+      <button type="button" id="btnInsert" class="btn btn-accent" disabled onclick="insertEntry()">⤵ Insert</button>
+      <button type="button" id="btnEdit" class="btn btn-accent" disabled onclick="startFormEdit()">✏️ Edit</button>
+      <button type="button" id="btnBold" class="btn btn-accent" disabled onclick="toggleBold()">🅱️ Bold</button>
+      <button type="button" id="btnDelete" class="btn btn-danger" disabled onclick="deleteEntry()">🗑 Delete</button>
+      <button type="button" id="btnClear" class="btn btn-danger" disabled onclick="confirmDialog('Clear All','Remove all entries?',clearAll)">✕ Clear All</button>
+    </div>
+    <div class="btn-group">
+      <button type="button" id="btnSaveAs" class="btn btn-accent" disabled onclick="saveAsTrip()">💾 Save As</button>
+      <button type="button" id="btnSave" class="btn btn-accent" disabled onclick="saveTrip()">💾 Save</button>
+      <button type="button" id="btnLoad" class="btn btn-accent" onclick="loadTripPicker()">📂 Load Trip</button>
+    </div>
   </div>
 
   <!-- Table -->
