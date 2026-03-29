@@ -33,6 +33,7 @@ class RoadtripApp:
                 "Distance (mi)": pl.Float64,
                 "Arrival Time": pl.Utf8,
                 "Departure Time": pl.Utf8,
+                "Is Bold": pl.Boolean,
             }
         )
 
@@ -284,6 +285,11 @@ class RoadtripApp:
                                 state="disabled")
         self.edit_btn.pack(side="left", padx=(0, 8))
 
+        self.bold_btn = ttk.Button(btn_frame, text="🅱️ Bold",
+                                style="Accent.TButton", command=self._toggle_bold_entry,
+                                state="disabled")
+        self.bold_btn.pack(side="left", padx=(0, 8))
+
         self.delete_btn = ttk.Button(btn_frame, text="🗑  Delete",
                                  style="Clear.TButton", command=self._delete_entry,
                                  state="disabled")
@@ -310,6 +316,8 @@ class RoadtripApp:
         columns = ("stopnum", "place", "distance", "travel", "arrival", "stop", "departure")
         self.tree = ttk.Treeview(table_frame, columns=columns,
                                   show="headings", selectmode="browse")
+
+        self.tree.tag_configure("boldrow", font=("Helvetica", 14, "bold"))
 
         self.tree.heading("stopnum", text="#")
         self.tree.heading("place", text="Place Name")
@@ -412,6 +420,7 @@ class RoadtripApp:
             "Distance (mi)": [dist],
             "Arrival Time": [""],
             "Departure Time": [""],
+            "Is Bold": [False],
         })
 
     def _clear_inputs(self) -> None:
@@ -551,6 +560,27 @@ class RoadtripApp:
         print("\n── Inserted into DataFrame ───────────────────────")
         print(self.df)
         print("──────────────────────────────────────────────────\n")
+
+    def _toggle_bold_entry(self) -> None:
+        """Toggle the bold state of the selected row."""
+        selected = self.tree.selection()
+        if not selected:
+            messagebox.showinfo("No row selected", "Select a row to toggle bold.")
+            return
+
+        item = selected[0]
+        idx = self.tree.index(item)
+
+        current_bold = self.df["Is Bold"][idx]
+        new_bold = not current_bold
+        
+        col_values = self.df["Is Bold"].to_list()
+        col_values[idx] = new_bold
+        self.df = self.df.with_columns(pl.Series("Is Bold", col_values))
+
+        self._refresh_treeview()
+        self._dirty = True
+        self._update_status()
 
     def _delete_entry(self) -> None:
         """Delete the selected row via the toolbar button."""
@@ -720,6 +750,11 @@ class RoadtripApp:
                 pl.col("Stop Time").cast(pl.Utf8),
                 pl.col("Distance (mi)").cast(pl.Float64),
             ])
+            
+            if "Is Bold" not in imported.columns:
+                imported = imported.with_columns(pl.lit(False).alias("Is Bold"))
+            else:
+                imported = imported.with_columns(pl.col("Is Bold").cast(pl.Boolean))
         except Exception:
             messagebox.showerror(
                 "Invalid data",
@@ -737,7 +772,7 @@ class RoadtripApp:
         # Keep only the columns we care about, in the right order
         imported = imported.select(
             "Place Name", "Travel Time", "Stop Time",
-            "Distance (mi)", "Arrival Time", "Departure Time",
+            "Distance (mi)", "Arrival Time", "Departure Time", "Is Bold"
         )
 
         self.df = imported
@@ -832,6 +867,7 @@ class RoadtripApp:
         for item in self.tree.get_children():
             self.tree.delete(item)
         for idx, row in enumerate(self.df.iter_rows(named=True), start=1):
+            tags = ("boldrow",) if row.get("Is Bold") else ()
             self.tree.insert("", "end", values=(
                 idx,
                 row["Place Name"],
@@ -840,7 +876,7 @@ class RoadtripApp:
                 row["Arrival Time"],
                 row["Stop Time"],
                 row["Departure Time"],
-            ))
+            ), tags=tags)
 
     # ── Inline Cell Editing ──────────────────────────────────────────────
     def _on_double_click(self, event: tk.Event) -> None:
@@ -983,7 +1019,7 @@ class RoadtripApp:
         else:
             state = "!disabled" if n > 0 else "disabled"
             
-        for btn in (self.insert_btn, self.edit_btn, self.delete_btn, self.clear_btn, self.export_btn):
+        for btn in (self.insert_btn, self.edit_btn, self.bold_btn, self.delete_btn, self.clear_btn, self.export_btn):
             btn.state([state])
 
     def _on_close(self) -> None:

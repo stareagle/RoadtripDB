@@ -437,6 +437,7 @@
     <button type="button" id="btnCancelEdit" class="btn btn-danger" style="display:none;" onclick="cancelFormEdit()">✕ Cancel</button>
     <button type="button" id="btnInsert" class="btn btn-accent" disabled onclick="insertEntry()">⤵ Insert</button>
     <button type="button" id="btnEdit" class="btn btn-accent" disabled onclick="startFormEdit()">✏️ Edit</button>
+    <button type="button" id="btnBold" class="btn btn-accent" disabled onclick="toggleBold()">🅱️ Bold</button>
     <button type="button" id="btnDelete" class="btn btn-danger" disabled onclick="deleteEntry()">🗑 Delete</button>
     <button type="button" id="btnClear" class="btn btn-danger" disabled onclick="confirmDialog('Clear All','Remove all entries?',clearAll)">✕ Clear All</button>
     <div class="btn-spacer"></div>
@@ -513,6 +514,7 @@ const btnAdd    = $('btnAdd');
 const btnCancelEdit = $('btnCancelEdit');
 const btnInsert = $('btnInsert');
 const btnEdit   = $('btnEdit');
+const btnBold   = $('btnBold');
 const btnDelete = $('btnDelete');
 const btnClear  = $('btnClear');
 const btnSave   = $('btnSave');
@@ -624,7 +626,7 @@ function validateInputs() {
   if (parseHM(travel) === null) { toast('Travel Time must be H:MM (e.g. 2:30)'); inputTravel.focus(); return null; }
   if (parseHM(stop) === null) { toast('Stop Time must be H:MM (e.g. 0:45)'); inputStop.focus(); return null; }
 
-  return { place, distance: dist, travelTime: travel, stopTime: stop, arrival: '', departure: '' };
+  return { place, distance: dist, travelTime: travel, stopTime: stop, arrival: '', departure: '', isBold: false };
 }
 
 function clearInputs() {
@@ -729,6 +731,14 @@ function deleteEntry() {
   });
 }
 
+function toggleBold() {
+  if (selectedIndex < 0) { toast('Select a row to bold'); return; }
+  stops[selectedIndex].isBold = !stops[selectedIndex].isBold;
+  dirty = true;
+  render();
+  updateStatus();
+}
+
 function clearAll() {
   stops = [];
   selectedIndex = -1;
@@ -752,6 +762,7 @@ function saveTrip() {
       "Distance (mi)": s.distance,
       "Arrival Time": s.arrival,
       "Departure Time": s.departure,
+      "Is Bold": s.isBold || false
     })),
   };
 
@@ -816,6 +827,7 @@ function loadTrip(e) {
         distance:   parseFloat(s['Distance (mi)']) || 0,
         arrival:    s['Arrival Time']  || '',
         departure:  s['Departure Time'] || '',
+        isBold:     s['Is Bold'] === true,
       }));
 
       selectedIndex = -1;
@@ -842,6 +854,7 @@ function render() {
   stops.forEach((stop, i) => {
     const tr = document.createElement('tr');
     if (i === selectedIndex) tr.classList.add('selected');
+    if (stop.isBold) tr.style.fontWeight = 'bold';
 
     // Row selection — use onclick for iOS reliability
     tr.onclick = function(e) {
@@ -1020,12 +1033,14 @@ function updateBtnStates() {
   if (isEditingForm) {
     btnInsert.disabled = true;
     btnEdit.disabled = true;
+    btnBold.disabled = true;
     btnDelete.disabled = true;
     btnClear.disabled = true;
     btnSave.disabled = true;
   } else {
     btnInsert.disabled = !hasData;
     btnEdit.disabled = !hasData;
+    btnBold.disabled = !hasData;
     btnDelete.disabled = !hasData;
     btnClear.disabled  = !hasData;
     btnSave.disabled   = !hasData;
