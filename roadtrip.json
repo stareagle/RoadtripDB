@@ -1,0 +1,181 @@
+{
+  "trip_start": "2026-08-01 20:53",
+  "stops": [
+    {
+      "Place Name": "Denver Airport",
+      "Travel Time": "0:0",
+      "Stop Time": "0:45",
+      "Distance (mi)": 0.0,
+      "Arrival Time": "2026-08-01 20:53",
+      "Departure Time": "2026-08-01 21:38"
+    },
+    {
+      "Place Name": "Embassy Suites",
+      "Travel Time": "0:39",
+      "Stop Time": "11:30",
+      "Distance (mi)": 26.0,
+      "Arrival Time": "2026-08-01 22:17",
+      "Departure Time": "2026-08-02 09:47"
+    },
+    {
+      "Place Name": "Elitch Theme Park",
+      "Travel Time": "0:06",
+      "Stop Time": "4:00",
+      "Distance (mi)": 1.0,
+      "Arrival Time": "2026-08-02 09:53",
+      "Departure Time": "2026-08-02 13:53"
+    },
+    {
+      "Place Name": "Casa Bonita",
+      "Travel Time": "0:13",
+      "Stop Time": "3:00",
+      "Distance (mi)": 5.0,
+      "Arrival Time": "2026-08-02 14:06",
+      "Departure Time": "2026-08-02 17:06"
+    },
+    {
+      "Place Name": "Elitch Water Park",
+      "Travel Time": "0:13",
+      "Stop Time": "2:30",
+      "Distance (mi)": 5.0,
+      "Arrival Time": "2026-08-02 17:19",
+      "Departure Time": "2026-08-02 19:49"
+    },
+    {
+      "Place Name": "Embassy Suites",
+      "Travel Time": "0:06",
+      "Stop Time": "13:00",
+      "Distance (mi)": 2.0,
+      "Arrival Time": "2026-08-02 19:55",
+      "Departure Time": "2026-08-03 08:55"
+    },
+    {
+      "Place Name": "Wyoming State Capitol",
+      "Travel Time": "1:37",
+      "Stop Time": "3:00",
+      "Distance (mi)": 101.0,
+      "Arrival Time": "2026-08-03 10:32",
+      "Departure Time": "2026-08-03 13:32"
+    },
+    {
+      "Place Name": "Jakalope Sculpture",
+      "Travel Time": "1:54",
+      "Stop Time": "4:00",
+      "Distance (mi)": 129.0,
+      "Arrival Time": "2026-08-03 15:26",
+      "Departure Time": "2026-08-03 19:26"
+    },
+    {
+      "Place Name": "Hampton Inn Douglas",
+      "Travel Time": "0:04",
+      "Stop Time": "13:30",
+      "Distance (mi)": 1.0,
+      "Arrival Time": "2026-08-03 19:30",
+      "Departure Time": "2026-08-04 09:00"
+    },
+    {
+      "Place Name": "Frontier Auto Museum",
+      "Travel Time": "1:56",
+      "Stop Time": "2:30",
+      "Distance (mi)": 115.0,
+      "Arrival Time": "2026-08-04 10:56",
+      "Departure Time": "2026-08-04 13:26"
+    },
+    {
+      "Place Name": "Best Western Sunset Inn",
+      "Travel Time": "4:31",
+      "Stop Time": "15:00",
+      "Distance (mi)": 248.0,
+      "Arrival Time": "2026-08-04 17:57",
+      "Departure Time": "2026-08-05 08:57"
+    },
+    {
+      "Place Name": "Buffalo Bill Center",
+      "Travel Time": "0:02",
+      "Stop Time": "3:00",
+      "Distance (mi)": 1.0,
+      "Arrival Time": "2026-08-05 08:59",
+      "Departure Time": "2026-08-05 11:59"
+    },
+    {
+      "Place Name": "Smith Mansion",
+      "Travel Time": "0:31",
+      "Stop Time": "0:30",
+      "Distance (mi)": 23.0,
+      "Arrival Time": "2026-08-05 12:30",
+      "Departure Time": "2026-08-05 13:00"
+    },
+    {
+      "Place Name": "Fishing Bridge Museum",
+      "Travel Time": "2:12",
+      "Stop Time": "1:00",
+      "Distance (mi)": 55.0,
+      "Arrival Time": "2026-08-05 15:12",
+      "Departure Time": "2026-08-05 16:12"
+    },
+    {
+      "Place Name": "Old Faithful Geyser",
+      "Travel Time": "1:58",
+      "Stop Time": "1:00",
+      "Distance (mi)": 41.0,
+      "Arrival Time": "2026-08-05 18:10",
+      "Departure Time": "2026-08-05 19:10"
+    },
+    {
+      "Place Name": "Obsidian Room",
+      "Travel Time": "0:05",
+      "Stop Time": "2:00",
+      "Distance (mi)": 1.0,
+      "Arrival Time": "2026-08-05 19:15",
+      "Departure Time": "2026-08-05 21:15"
+    },
+    {
+      "Place Name": "Dornan's Chuck Waqgon",
+      "Travel Time": "3:12",
+      "Stop Time": "1:00",
+      "Distance (mi)": 86.0,
+      "Arrival Time": "2026-08-06 00:27",
+      "Departure Time": "2026-08-06 01:27"
+    },
+    {
+      "Place Name": "Spring Creek Ranch",
+      "Travel Time": "0:32",
+      "Stop Time": "12:00",
+      "Distance (mi)": 16.0,
+      "Arrival Time": "2026-08-06 01:59",
+      "Departure Time": "2026-08-06 13:59"
+    },
+    {
+      "Place Name": "Military Vehicle Museum",
+      "Travel Time": "2:10",
+      "Stop Time": "2:00",
+      "Distance (mi)": 97.0,
+      "Arrival Time": "2026-08-06 16:09",
+      "Departure Time": "2026-08-06 18:09"
+    },
+    {
+      "Place Name": "Wyoming Territorial Prison",
+      "Travel Time": "4:33",
+      "Stop Time": "2:00",
+      "Distance (mi)": 289.0,
+      "Arrival Time": "2026-08-06 22:42",
+      "Departure Time": "2026-08-07 00:42"
+    },
+    {
+      "Place Name": "Fort Collins, CO",
+      "Travel Time": "1:15",
+      "Stop Time": "2:00",
+      "Distance (mi)": 69.0,
+      "Arrival Time": "2026-08-07 01:57",
+      "Departure Time": "2026-08-07 03:57"
+    },
+    {
+      "Place Name": "Denver Airport",
+      "Travel Time": "1:18",
+      "Stop Time": "00:00",
+      "Distance (mi)": 67.0,
+      "Arrival Time": "2026-08-07 05:15",
+      "Departure Time": "2026-08-07 05:15"
+    }
+  ]
+}

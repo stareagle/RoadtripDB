@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>RoadtripDB</title>
+  <meta name="description" content="Log your road trip stops with automatic arrival and departure time calculations.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗺</text></svg>">
+  <style>
+    /* ── Reset & Base ─────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #1e1e2e;
+      --surface: #2a2a3c;
+      --accent: #7c3aed;
+      --accent-hover: #6d28d9;
+      --accent-glow: rgba(124, 58, 237, 0.25);
+      --text: #e2e2f0;
+      --muted: #9090a8;
+      --border: #3a3a50;
+      --danger: #ef4444;
+      --danger-hover: #dc2626;
+      --success: #22c55e;
+      --radius: 10px;
+      --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    html { font-size: 15px; }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      -webkit-tap-highlight-color: transparent;
+      overscroll-behavior: none;
+    }
+
+    /* ── Header ───────────────────────────────────────────────── */
+    .app-header {
+      text-align: center;
+      padding: 18px 24px 12px;
+    }
+    .app-header h1 {
+      font-size: 1.55rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .app-header p {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-top: 2px;
+    }
+    .header-rule {
+      height: 1px;
+      background: var(--border);
+      margin: 0 24px;
+    }
+
+    /* ── Sections ──────────────────────────────────────────────── */
+    .section {
+      padding: 10px 24px;
+    }
+
+    /* ── Trip Start ────────────────────────────────────────────── */
+    .trip-start {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .trip-start-label {
+      color: var(--muted);
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .datetime-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .datetime-group .sep {
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 1rem;
+      padding: 0 2px;
+    }
+    .dt-field {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+    .dt-field label {
+      font-size: 0.65rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .dt-input {
+      width: 52px;
+      text-align: center;
+      padding: 7px 4px;
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-family: var(--font);
+      font-size: 0.95rem;
+      font-weight: 500;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .dt-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+    .dt-input.wide { width: 64px; }
+
+    /* ── Input Card ────────────────────────────────────────────── */
+    .input-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+    }
+    .input-card-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 10px;
+    }
+    .input-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+    @media (max-width: 700px) {
+      .input-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    .field-group label {
+      display: block;
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-bottom: 4px;
+      font-weight: 500;
+    }
+    .field-input {
+      width: 100%;
+      padding: 10px 12px;
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-family: var(--font);
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .field-input::placeholder { color: #5a5a72; }
+    .field-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    /* ── Buttons ───────────────────────────────────────────────── */
+    .btn-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 8px 24px;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 18px;
+      border: none;
+      border-radius: var(--radius);
+      font-family: var(--font);
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, opacity 0.2s, transform 0.1s;
+      -webkit-appearance: none;
+      appearance: none;
+      min-height: 44px;
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+      transform: none;
+      pointer-events: none;
+    }
+    .btn-accent {
+      background: var(--accent);
+      color: #fff;
+    }
+    .btn-accent:not(:disabled):hover { background: var(--accent-hover); }
+    .btn-danger {
+      background: var(--danger);
+      color: #fff;
+    }
+    .btn-danger:not(:disabled):hover { background: var(--danger-hover); }
+    .btn-spacer { flex: 1; }
+
+    /* ── Table ─────────────────────────────────────────────────── */
+    .table-wrap {
+      flex: 1;
+      padding: 4px 24px 8px;
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 780px;
+    }
+    .data-table thead th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: var(--border);
+      color: var(--text);
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 10px 10px;
+      text-align: center;
+      white-space: nowrap;
+      user-select: none;
+    }
+    .data-table thead th:nth-child(2) { text-align: left; }
+    .data-table tbody tr {
+      cursor: pointer;
+      transition: background 0.15s;
+      touch-action: manipulation;
+    }
+    .data-table tbody tr:hover { background: rgba(124, 58, 237, 0.08); }
+    .data-table tbody tr.selected { background: var(--accent) !important; }
+    .data-table tbody tr.selected td { color: #fff; }
+    .data-table tbody td {
+      padding: 9px 10px;
+      font-size: 0.92rem;
+      border-bottom: 1px solid var(--border);
+      text-align: center;
+      white-space: nowrap;
+    }
+    .data-table tbody td:nth-child(2) { text-align: left; }
+    .data-table tbody td.editing {
+      padding: 2px;
+    }
+    .cell-edit-input {
+      width: 100%;
+      padding: 7px 8px;
+      background: var(--bg);
+      color: var(--text);
+      border: 2px solid var(--accent);
+      border-radius: 6px;
+      font-family: var(--font);
+      font-size: 0.92rem;
+      outline: none;
+      text-align: inherit;
+    }
+    .empty-state {
+      text-align: center;
+      color: var(--muted);
+      padding: 48px 24px;
+      font-size: 1rem;
+    }
+    .empty-state .icon { font-size: 2.5rem; margin-bottom: 10px; }
+
+    /* ── Status Bar ────────────────────────────────────────────── */
+    .status-bar {
+      padding: 8px 24px 14px;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .status-bar .unsaved {
+      color: var(--danger);
+      font-weight: 600;
+    }
+
+    /* ── Toast ─────────────────────────────────────────────────── */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 24px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      opacity: 0;
+      transition: transform 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.35s;
+      z-index: 100;
+      pointer-events: none;
+    }
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    /* ── Confirm Dialog ────────────────────────────────────────── */
+    .dialog-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      z-index: 50;
+      align-items: center;
+      justify-content: center;
+    }
+    .dialog-overlay.active { display: flex; }
+    .dialog-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 28px 32px 20px;
+      max-width: 360px;
+      width: 90%;
+      text-align: center;
+    }
+    .dialog-box h3 {
+      font-size: 1.05rem;
+      margin-bottom: 8px;
+    }
+    .dialog-box p {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-bottom: 20px;
+    }
+    .dialog-btns {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    }
+    .dialog-btns .btn { flex: 1; justify-content: center; }
+
+    /* Hidden file input */
+    #fileInput { display: none; }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="app-header">
+    <h1>🗺 RoadtripDB</h1>
+    <p>Log your road trip stops</p>
+  </header>
+  <div class="header-rule"></div>
+
+  <!-- Trip Start -->
+  <div class="section">
+    <div class="trip-start">
+      <span class="trip-start-label">Trip Start</span>
+      <div class="datetime-group">
+        <div class="dt-field">
+          <label for="startMonth">Mon</label>
+          <input id="startMonth" class="dt-input" type="number" min="1" max="12" inputmode="numeric">
+        </div>
+        <span class="sep">/</span>
+        <div class="dt-field">
+          <label for="startDay">Day</label>
+          <input id="startDay" class="dt-input" type="number" min="1" max="31" inputmode="numeric">
+        </div>
+        <span class="sep">/</span>
+        <div class="dt-field">
+          <label for="startYear">Year</label>
+          <input id="startYear" class="dt-input wide" type="number" min="2020" max="2040" inputmode="numeric">
+        </div>
+      </div>
+      <div class="datetime-group">
+        <div class="dt-field">
+          <label for="startHour">Hr</label>
+          <input id="startHour" class="dt-input" type="number" min="0" max="23" inputmode="numeric">
+        </div>
+        <span class="sep">:</span>
+        <div class="dt-field">
+          <label for="startMinute">Min</label>
+          <input id="startMinute" class="dt-input" type="number" min="0" max="59" inputmode="numeric">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Input Form -->
+  <div class="section">
+    <div class="input-card">
+      <div class="input-card-title">New Entry</div>
+      <div class="input-grid">
+        <div class="field-group">
+          <label for="inputPlace">Place Name</label>
+          <input id="inputPlace" class="field-input" type="text" placeholder="e.g. Grand Canyon">
+        </div>
+        <div class="field-group">
+          <label for="inputDistance">Distance (mi)</label>
+          <input id="inputDistance" class="field-input" type="text" placeholder="e.g. 85.5" inputmode="decimal">
+        </div>
+        <div class="field-group">
+          <label for="inputTravel">Travel Time</label>
+          <input id="inputTravel" class="field-input" type="text" placeholder="e.g. 2:30">
+        </div>
+        <div class="field-group">
+          <label for="inputStop">Stop Time</label>
+          <input id="inputStop" class="field-input" type="text" placeholder="e.g. 0:45">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Buttons -->
+  <div class="btn-bar">
+    <button type="button" id="btnAdd" class="btn btn-accent" onclick="addEntry()">＋ Add</button>
+    <button type="button" id="btnInsert" class="btn btn-accent" disabled onclick="insertEntry()">⤵ Insert</button>
+    <button type="button" id="btnDelete" class="btn btn-danger" disabled onclick="deleteEntry()">🗑 Delete</button>
+    <button type="button" id="btnClear" class="btn btn-danger" disabled onclick="confirmDialog('Clear All','Remove all entries?',clearAll)">✕ Clear All</button>
+    <div class="btn-spacer"></div>
+    <button type="button" id="btnSave" class="btn btn-accent" disabled onclick="saveTrip()">💾 Save Trip</button>
+    <button type="button" id="btnLoad" class="btn btn-accent" onclick="document.getElementById('fileInput').click()">📂 Load Trip</button>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrap" id="tableWrap">
+    <table class="data-table" id="dataTable">
+      <thead>
+        <tr>
+          <th style="width:42px">#</th>
+          <th>Place Name</th>
+          <th>Distance (mi)</th>
+          <th>Travel Time</th>
+          <th>Arrival</th>
+          <th>Stop Time</th>
+          <th>Departure</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+    <div class="empty-state" id="emptyState">
+      <div class="icon">🗺</div>
+      Add your first stop or load a trip to get started.
+    </div>
+  </div>
+
+  <!-- Status Bar -->
+  <div class="status-bar" id="statusBar">0 entries &nbsp;|&nbsp; Tap a cell to edit</div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <!-- Confirm Dialog -->
+  <div class="dialog-overlay" id="dialogOverlay">
+    <div class="dialog-box">
+      <h3 id="dialogTitle">Confirm</h3>
+      <p id="dialogMsg">Are you sure?</p>
+      <div class="dialog-btns">
+        <button type="button" class="btn btn-danger" id="dialogCancel">Cancel</button>
+        <button type="button" class="btn btn-accent" id="dialogOk">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden File Input -->
+  <input type="file" id="fileInput" accept=".json,application/json">
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────
+let stops = [];          // Array of { place, travelTime, stopTime, distance }
+let selectedIndex = -1;  // Currently selected row (-1 = none)
+let dirty = false;
+let editingCell = null;  // { rowIdx, field } if a cell is being edited
+
+// ── DOM refs ───────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const startMonth  = $('startMonth');
+const startDay    = $('startDay');
+const startYear   = $('startYear');
+const startHour   = $('startHour');
+const startMinute = $('startMinute');
+
+const inputPlace    = $('inputPlace');
+const inputDistance  = $('inputDistance');
+const inputTravel   = $('inputTravel');
+const inputStop     = $('inputStop');
+
+const btnAdd    = $('btnAdd');
+const btnInsert = $('btnInsert');
+const btnDelete = $('btnDelete');
+const btnClear  = $('btnClear');
+const btnSave   = $('btnSave');
+const btnLoad   = $('btnLoad');
+
+const tableBody  = $('tableBody');
+const emptyState = $('emptyState');
+const statusBar  = $('statusBar');
+const toastEl    = $('toast');
+const fileInput  = $('fileInput');
+
+// ── Init ───────────────────────────────────────────────────────────────
+function init() {
+  const now = new Date();
+  startMonth.value  = String(now.getMonth() + 1).padStart(2, '0');
+  startDay.value    = String(now.getDate()).padStart(2, '0');
+  startYear.value   = now.getFullYear();
+  startHour.value   = String(now.getHours()).padStart(2, '0');
+  startMinute.value = String(now.getMinutes()).padStart(2, '0');
+
+  // Event listeners are set via inline onclick for iOS Safari reliability.
+  // File input still needs addEventListener for 'change'.
+  fileInput.addEventListener('change', loadTrip);
+
+  // Enter key in input fields → add entry
+  [inputPlace, inputDistance, inputTravel, inputStop].forEach(el => {
+    el.addEventListener('keydown', e => { if (e.key === 'Enter') addEntry(); });
+  });
+
+  // Recalculate times when start time changes
+  [startMonth, startDay, startYear, startHour, startMinute].forEach(el => {
+    el.addEventListener('change', () => { if (stops.length) { recalculate(); render(); } });
+  });
+
+  // Warn before leaving with unsaved changes
+  window.addEventListener('beforeunload', e => {
+    if (dirty && stops.length > 0) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  });
+
+  // Default focus
+  btnLoad.focus();
+
+  updateStatus();
+}
+
+// ── Time Helpers ────────────────────────────────────────────────────────
+function parseHM(str) {
+  if (typeof str !== 'string' || !str.includes(':')) return null;
+  const [h, m] = str.split(':').map(Number);
+  if (isNaN(h) || isNaN(m) || h < 0 || m < 0 || m > 59) return null;
+  return h * 60 + m;
+}
+
+function formatHM(totalMin) {
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return `${h}:${String(m).padStart(2, '0')}`;
+}
+
+function pad2(n) { return String(n).padStart(2, '0'); }
+
+function formatDatetime(d) {
+  return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+
+function getStartTime() {
+  const y = parseInt(startYear.value)  || 2026;
+  const mo = parseInt(startMonth.value) || 1;
+  const d = parseInt(startDay.value)   || 1;
+  const h = parseInt(startHour.value)  || 0;
+  const mi = parseInt(startMinute.value)|| 0;
+  // Clamp day
+  const maxDay = new Date(y, mo, 0).getDate();
+  const day = Math.min(d, maxDay);
+  return new Date(y, mo - 1, day, h, mi);
+}
+
+// ── Recalculate Arrival / Departure ────────────────────────────────────
+function recalculate() {
+  let cursor = getStartTime();
+  stops.forEach(stop => {
+    const travelMin = parseHM(stop.travelTime) || 0;
+    const stopMin   = parseHM(stop.stopTime)   || 0;
+    const arrival   = new Date(cursor.getTime() + travelMin * 60000);
+    const departure = new Date(arrival.getTime() + stopMin * 60000);
+    stop.arrival   = formatDatetime(arrival);
+    stop.departure = formatDatetime(departure);
+    cursor = departure;
+  });
+}
+
+// ── Validation ─────────────────────────────────────────────────────────
+function validateInputs() {
+  const place   = inputPlace.value.trim();
+  const distStr = inputDistance.value.trim();
+  const travel  = inputTravel.value.trim();
+  const stop    = inputStop.value.trim();
+
+  if (!place) { toast('Please fill in Place Name'); inputPlace.focus(); return null; }
+  if (!distStr) { toast('Please fill in Distance'); inputDistance.focus(); return null; }
+  if (!travel) { toast('Please fill in Travel Time'); inputTravel.focus(); return null; }
+  if (!stop) { toast('Please fill in Stop Time'); inputStop.focus(); return null; }
+
+  const dist = parseFloat(distStr);
+  if (isNaN(dist)) { toast('Distance must be a number'); inputDistance.focus(); return null; }
+  if (parseHM(travel) === null) { toast('Travel Time must be H:MM (e.g. 2:30)'); inputTravel.focus(); return null; }
+  if (parseHM(stop) === null) { toast('Stop Time must be H:MM (e.g. 0:45)'); inputStop.focus(); return null; }
+
+  return { place, distance: dist, travelTime: travel, stopTime: stop, arrival: '', departure: '' };
+}
+
+function clearInputs() {
+  inputPlace.value = '';
+  inputDistance.value = '';
+  inputTravel.value = '';
+  inputStop.value = '';
+}
+
+// ── CRUD Actions ───────────────────────────────────────────────────────
+function addEntry() {
+  const entry = validateInputs();
+  if (!entry) return;
+  stops.push(entry);
+  recalculate();
+  render();
+  clearInputs();
+  dirty = true;
+  updateStatus();
+  inputPlace.focus();
+}
+
+function insertEntry() {
+  if (selectedIndex < 0) { toast('Select a row first'); return; }
+  const entry = validateInputs();
+  if (!entry) return;
+  stops.splice(selectedIndex, 0, entry);
+  recalculate();
+  selectedIndex = -1;
+  render();
+  clearInputs();
+  dirty = true;
+  updateStatus();
+  inputPlace.focus();
+}
+
+function deleteEntry() {
+  if (selectedIndex < 0) { toast('Select a row to delete'); return; }
+  const idx = selectedIndex;
+  confirmDialog('Delete Entry', `Delete row ${idx + 1}?`, () => {
+    stops.splice(idx, 1);
+    selectedIndex = -1;
+    recalculate();
+    render();
+    dirty = true;
+    updateStatus();
+  });
+}
+
+function clearAll() {
+  stops = [];
+  selectedIndex = -1;
+  recalculate();
+  render();
+  dirty = false;
+  updateStatus();
+}
+
+// ── Save / Load ────────────────────────────────────────────────────────
+function saveTrip() {
+  if (stops.length === 0) { toast('Add some entries first'); return; }
+
+  const startDt = getStartTime();
+  const tripData = {
+    trip_start: formatDatetime(startDt),
+    stops: stops.map(s => ({
+      "Place Name": s.place,
+      "Travel Time": s.travelTime,
+      "Stop Time": s.stopTime,
+      "Distance (mi)": s.distance,
+      "Arrival Time": s.arrival,
+      "Departure Time": s.departure,
+    })),
+  };
+
+  const json = JSON.stringify(tripData, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'roadtrip.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  dirty = false;
+  updateStatus();
+  toast(`Trip saved (${stops.length} stops)`);
+}
+
+function loadTrip(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  fileInput.value = '';  // reset so same file can be loaded again
+
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!data.stops || !Array.isArray(data.stops)) {
+        toast('Invalid file: no stops found');
+        return;
+      }
+
+      // Restore trip start
+      if (data.trip_start) {
+        // Format: "YYYY-MM-DD HH:MM"
+        const parts = data.trip_start.match(/(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})/);
+        if (parts) {
+          startYear.value   = parts[1];
+          startMonth.value  = parts[2];
+          startDay.value    = parts[3];
+          startHour.value   = parts[4];
+          startMinute.value = parts[5];
+        }
+      }
+
+      // Validate required fields
+      const required = ['Place Name', 'Travel Time', 'Stop Time', 'Distance (mi)'];
+      const firstStop = data.stops[0] || {};
+      const missing = required.filter(k => !(k in firstStop));
+      if (missing.length && data.stops.length > 0) {
+        toast(`Missing fields: ${missing.join(', ')}`);
+        return;
+      }
+
+      // Build internal stops array
+      stops = data.stops.map(s => ({
+        place:      s['Place Name']    || '',
+        travelTime: String(s['Travel Time'] || '0:00'),
+        stopTime:   String(s['Stop Time']   || '0:00'),
+        distance:   parseFloat(s['Distance (mi)']) || 0,
+        arrival:    s['Arrival Time']  || '',
+        departure:  s['Departure Time'] || '',
+      }));
+
+      selectedIndex = -1;
+      recalculate();
+      render();
+      dirty = false;
+      updateStatus();
+      toast(`Trip loaded (${stops.length} stops)`);
+
+    } catch (err) {
+      toast('Could not read file: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ── Render ──────────────────────────────────────────────────────────────
+function render() {
+  const hasData = stops.length > 0;
+  emptyState.style.display = hasData ? 'none' : 'block';
+  $('dataTable').style.display = hasData ? '' : 'none';
+
+  tableBody.innerHTML = '';
+  stops.forEach((stop, i) => {
+    const tr = document.createElement('tr');
+    if (i === selectedIndex) tr.classList.add('selected');
+
+    // Row selection — use onclick for iOS reliability
+    tr.onclick = function(e) {
+      if (e.target.tagName === 'INPUT') return;
+      selectedIndex = (selectedIndex === i) ? -1 : i;
+      render();
+    };
+
+    // Cells: #, Place, Distance, Travel, Arrival, Stop, Departure
+    const cells = [
+      { value: i + 1, field: null },
+      { value: stop.place, field: 'place' },
+      { value: stop.distance, field: 'distance' },
+      { value: stop.travelTime, field: 'travelTime' },
+      { value: stop.arrival, field: null },     // readonly
+      { value: stop.stopTime, field: 'stopTime' },
+      { value: stop.departure, field: null },   // readonly
+    ];
+
+    cells.forEach(cell => {
+      const td = document.createElement('td');
+      td.textContent = cell.value;
+
+      if (cell.field) {
+        // Double-tap to edit (desktop + iPad with keyboard)
+        td.ondblclick = function(e) {
+          e.stopPropagation();
+          startCellEdit(i, cell.field, td);
+        };
+        // Long-press to edit (touch devices)
+        let pressTimer = null;
+        let touchMoved = false;
+        td.addEventListener('touchstart', function() {
+          touchMoved = false;
+          pressTimer = setTimeout(function() {
+            if (!touchMoved) startCellEdit(i, cell.field, td);
+          }, 500);
+        }, { passive: true });
+        td.addEventListener('touchmove', function() {
+          touchMoved = true;
+          if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+        }, { passive: true });
+        td.addEventListener('touchend', function() {
+          if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+        }, { passive: true });
+      }
+
+      tr.appendChild(td);
+    });
+
+    tableBody.appendChild(tr);
+  });
+
+  updateBtnStates();
+}
+
+function startCellEdit(rowIdx, field, td) {
+  // Cancel any existing edit
+  cancelCellEdit();
+
+  const stop = stops[rowIdx];
+  const currentValue = stop[field];
+
+  td.classList.add('editing');
+  td.textContent = '';
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'cell-edit-input';
+  input.value = currentValue;
+  input.style.textAlign = td.style.textAlign || (field === 'place' ? 'left' : 'center');
+  if (field === 'distance') input.inputMode = 'decimal';
+
+  td.appendChild(input);
+  input.focus();
+  input.select();
+
+  editingCell = { rowIdx, field, td, input };
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); commitCellEdit(); }
+    if (e.key === 'Escape') cancelCellEdit();
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      tabToNextCell(e.shiftKey);
+    }
+  });
+  input.addEventListener('blur', () => {
+    // Small delay to allow click events to fire first
+    setTimeout(() => { if (editingCell) commitCellEdit(); }, 100);
+  });
+}
+
+function commitCellEdit() {
+  if (!editingCell) return;
+  const { rowIdx, field, td, input } = editingCell;
+  const newValue = input.value.trim();
+  editingCell = null;
+
+  const stop = stops[rowIdx];
+
+  // Validate
+  if (field === 'place') {
+    if (!newValue) { toast('Place Name cannot be empty'); render(); return; }
+    stop.place = newValue;
+  } else if (field === 'distance') {
+    const n = parseFloat(newValue);
+    if (isNaN(n)) { toast('Distance must be a number'); render(); return; }
+    stop.distance = n;
+  } else if (field === 'travelTime' || field === 'stopTime') {
+    if (parseHM(newValue) === null) {
+      toast(`${field === 'travelTime' ? 'Travel' : 'Stop'} Time must be H:MM`);
+      render();
+      return;
+    }
+    stop[field] = newValue;
+  }
+
+  recalculate();
+  dirty = true;
+  render();
+  updateStatus();
+}
+
+function cancelCellEdit() {
+  if (!editingCell) return;
+  editingCell = null;
+  render();
+}
+
+function tabToNextCell(backward) {
+  if (!editingCell) return;
+  const { rowIdx, field } = editingCell;
+
+  // Editable fields in display order
+  const editableFields = ['place', 'distance', 'travelTime', 'stopTime'];
+  let colPos = editableFields.indexOf(field);
+  if (colPos === -1) return;
+
+  // Commit the current edit first
+  commitCellEdit();
+
+  // Step forward or backward
+  let nextRow = rowIdx;
+  if (backward) {
+    colPos--;
+    if (colPos < 0) { colPos = editableFields.length - 1; nextRow--; }
+  } else {
+    colPos++;
+    if (colPos >= editableFields.length) { colPos = 0; nextRow++; }
+  }
+
+  // Don't wrap past first/last row
+  if (nextRow < 0 || nextRow >= stops.length) return;
+
+  const nextField = editableFields[colPos];
+
+  // Schedule edit after render completes
+  requestAnimationFrame(() => {
+    // Find the target cell in the rendered table
+    const rows = tableBody.querySelectorAll('tr');
+    if (nextRow >= rows.length) return;
+    const row = rows[nextRow];
+
+    // Map field to cell index: place=1, distance=2, travelTime=3, stopTime=5
+    const fieldToCellIdx = { place: 1, distance: 2, travelTime: 3, stopTime: 5 };
+    const cellIdx = fieldToCellIdx[nextField];
+    const td = row.children[cellIdx];
+    if (td) startCellEdit(nextRow, nextField, td);
+  });
+}
+
+// ── Status & Button States ─────────────────────────────────────────────
+function updateBtnStates() {
+  const hasData = stops.length > 0;
+  btnInsert.disabled = !hasData;
+  btnDelete.disabled = !hasData;
+  btnClear.disabled  = !hasData;
+  btnSave.disabled   = !hasData;
+}
+
+function updateStatus() {
+  const n = stops.length;
+  const word = n === 1 ? 'entry' : 'entries';
+  let text = `${n} ${word} &nbsp;|&nbsp; Tap a cell to edit`;
+  if (dirty) text += ` <span class="unsaved">&nbsp;• Unsaved changes</span>`;
+  statusBar.innerHTML = text;
+  updateBtnStates();
+}
+
+// ── Toast ──────────────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2800);
+}
+
+// ── Confirm Dialog ─────────────────────────────────────────────────────
+function confirmDialog(title, msg, onOk) {
+  $('dialogTitle').textContent = title;
+  $('dialogMsg').textContent = msg;
+  $('dialogOverlay').classList.add('active');
+
+  const ok = $('dialogOk');
+  const cancel = $('dialogCancel');
+
+  function cleanup() {
+    $('dialogOverlay').classList.remove('active');
+    ok.removeEventListener('click', handleOk);
+    cancel.removeEventListener('click', handleCancel);
+  }
+  function handleOk() { cleanup(); onOk(); }
+  function handleCancel() { cleanup(); }
+
+  ok.addEventListener('click', handleOk);
+  cancel.addEventListener('click', handleCancel);
+}
+
+// ── Boot ───────────────────────────────────────────────────────────────
+init();
+
+// ── Service Worker (PWA offline support) ───────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
