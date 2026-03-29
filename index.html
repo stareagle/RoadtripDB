@@ -257,6 +257,12 @@
     .data-table tbody tr:hover { background: rgba(124, 58, 237, 0.08); }
     .data-table tbody tr.selected { background: var(--accent) !important; }
     .data-table tbody tr.selected td { color: #fff; }
+    .data-table tbody tr.bold-row { background-color: white !important; }
+    .data-table tbody tr.bold-row td {
+      color: black !important;
+      font-weight: bold;
+      font-size: 1.14rem;
+    }
     .data-table tbody td {
       padding: 9px 10px;
       font-size: 0.92rem;
@@ -854,7 +860,7 @@ function render() {
   stops.forEach((stop, i) => {
     const tr = document.createElement('tr');
     if (i === selectedIndex) tr.classList.add('selected');
-    if (stop.isBold) tr.style.fontWeight = 'bold';
+    if (stop.isBold) tr.classList.add('bold-row');
 
     // Row selection — use onclick for iOS reliability
     tr.onclick = function(e) {
