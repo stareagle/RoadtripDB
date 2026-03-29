@@ -317,7 +317,7 @@ class RoadtripApp:
         self.tree = ttk.Treeview(table_frame, columns=columns,
                                   show="headings", selectmode="browse")
 
-        self.tree.tag_configure("boldrow", font=("Helvetica", 14, "bold"))
+        self.tree.tag_configure("boldrow", font=("Helvetica", 17, "bold"), background="white", foreground="black")
 
         self.tree.heading("stopnum", text="#")
         self.tree.heading("place", text="Place Name")
