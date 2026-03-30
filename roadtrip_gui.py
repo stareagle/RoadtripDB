@@ -27,12 +27,12 @@ class RoadtripApp:
         self.df = pl.DataFrame(
             schema={
                 "Place Name": pl.Utf8,
-                "Start Time": pl.Utf8,
                 "Travel Time": pl.Utf8,
                 "Stop Time": pl.Utf8,
                 "Distance (mi)": pl.Float64,
                 "Arrival Time": pl.Utf8,
                 "Departure Time": pl.Utf8,
+                "Custom Departure": pl.Utf8,
                 "Is Bold": pl.Boolean,
             }
         )
@@ -40,13 +40,12 @@ class RoadtripApp:
         # Map treeview column IDs to DataFrame column names
         self._col_map = {
             "place": "Place Name",
-            "starttime": "Start Time",
             "travel": "Travel Time",
             "stop": "Stop Time",
             "distance": "Distance (mi)",
         }
         # Columns that the user may NOT edit (computed)
-        self._readonly_cols = {"stopnum", "arrival", "departure"}
+        self._readonly_cols = {"stopnum", "arrival"}
         # Track the active edit widget
         self._edit_widget: tk.Entry | None = None
         # Track form edit index for the main edit button feature
@@ -238,7 +237,6 @@ class RoadtripApp:
         # Grid of labels + entries
         fields = [
             ("Place Name", "e.g. Grand Canyon"),
-            ("Start Time", "e.g. 08:00 (opt)"),
             ("Distance (mi)", "e.g. 85.5"),
             ("Travel Time", "e.g. 2:30"),
             ("Stop Time", "e.g. 0:45"),
@@ -261,7 +259,7 @@ class RoadtripApp:
                         self._on_focus_out(ent, ph))
             self.entries[label_text] = entry
 
-        input_frame.columnconfigure((0, 1, 2, 3, 4), weight=1)
+        input_frame.columnconfigure((0, 1, 2, 3), weight=1)
 
         # Bind Enter key to add entry
         self.root.bind("<Return>", self._handle_return)
@@ -323,7 +321,7 @@ class RoadtripApp:
         table_frame = ttk.Frame(self.root, style="Card.TFrame")
         table_frame.pack(fill="both", expand=True, padx=24, pady=(4, 8))
 
-        columns = ("stopnum", "place", "starttime", "distance", "travel", "arrival", "stop", "departure")
+        columns = ("stopnum", "place", "distance", "travel", "arrival", "stop", "departure")
         self.tree = ttk.Treeview(table_frame, columns=columns,
                                   show="headings", selectmode="browse")
 
@@ -331,7 +329,6 @@ class RoadtripApp:
 
         self.tree.heading("stopnum", text="#")
         self.tree.heading("place", text="Place Name")
-        self.tree.heading("starttime", text="Start Time")
         self.tree.heading("distance", text="Distance (mi)")
         self.tree.heading("travel", text="Travel Time")
         self.tree.heading("arrival", text="Arrival Time")
@@ -340,7 +337,6 @@ class RoadtripApp:
 
         self.tree.column("stopnum", width=45, anchor="center", stretch=False)
         self.tree.column("place", width=180, anchor="w")
-        self.tree.column("starttime", width=120, anchor="center")
         self.tree.column("distance", width=120, anchor="center")
         self.tree.column("travel", width=120, anchor="center")
         self.tree.column("arrival", width=150, anchor="center")
@@ -390,7 +386,6 @@ class RoadtripApp:
         """Validate the input fields and return (raw_values, distance) or None."""
         placeholders = {
             "Place Name": "e.g. Grand Canyon",
-            "Start Time": "e.g. 08:00 (opt)",
             "Distance (mi)": "e.g. 85.5",
             "Travel Time": "e.g. 2:30",
             "Stop Time": "e.g. 0:45",
@@ -399,17 +394,6 @@ class RoadtripApp:
         raw: dict[str, str] = {}
         for key, entry in self.entries.items():
             val = entry.get().strip()
-            if key == "Start Time":
-                if val == placeholders[key]:
-                    raw[key] = ""
-                else:
-                    if val != "" and self._parse_hm(val) is None:
-                        messagebox.showerror("Invalid input", "Start Time must be in H:MM format.")
-                        entry.focus_set()
-                        return None
-                    raw[key] = val
-                continue
-
             if val == placeholders[key] or val == "":
                 messagebox.showwarning("Missing field",
                                         f'Please fill in "{key}".')
@@ -439,12 +423,12 @@ class RoadtripApp:
         """Build a single-row DataFrame from validated inputs."""
         return pl.DataFrame({
             "Place Name": [raw["Place Name"]],
-            "Start Time": [raw.get("Start Time", "")],
             "Travel Time": [raw["Travel Time"]],
             "Stop Time": [raw["Stop Time"]],
             "Distance (mi)": [dist],
             "Arrival Time": [""],
             "Departure Time": [""],
+            "Custom Departure": [""],
             "Is Bold": [False],
         })
 
@@ -452,7 +436,6 @@ class RoadtripApp:
         """Reset all input fields to their placeholders."""
         placeholders = {
             "Place Name": "e.g. Grand Canyon",
-            "Start Time": "e.g. 08:00 (opt)",
             "Distance (mi)": "e.g. 85.5",
             "Travel Time": "e.g. 2:30",
             "Stop Time": "e.g. 0:45",
@@ -789,11 +772,14 @@ class RoadtripApp:
             )
             return
 
-        # Ensure Start Time exists
-        if "Start Time" not in imported.columns:
-            imported = imported.with_columns(pl.lit("").alias("Start Time"))
+        # Ensure Custom Departure exists
+        if "Start Time" in imported.columns:
+            imported = imported.rename({"Start Time": "Custom Departure"}).with_columns(pl.col("Custom Departure").cast(pl.Utf8).fill_null(""))
         else:
-            imported = imported.with_columns(pl.col("Start Time").cast(pl.Utf8).fill_null(""))
+            if "Custom Departure" not in imported.columns:
+                imported = imported.with_columns(pl.lit("").alias("Custom Departure"))
+            else:
+                imported = imported.with_columns(pl.col("Custom Departure").cast(pl.Utf8).fill_null(""))
 
         # Ensure correct types
         try:
@@ -823,8 +809,8 @@ class RoadtripApp:
 
         # Keep only the columns we care about, in the right order
         imported = imported.select(
-            "Place Name", "Start Time", "Travel Time", "Stop Time",
-            "Distance (mi)", "Arrival Time", "Departure Time", "Is Bold"
+            "Place Name", "Travel Time", "Stop Time",
+            "Distance (mi)", "Arrival Time", "Departure Time", "Custom Departure", "Is Bold"
         )
 
         self.df = imported
@@ -900,22 +886,22 @@ class RoadtripApp:
         departures: list[str] = []
 
         for row in self.df.iter_rows(named=True):
-            custom_start = row.get("Start Time")
-            if custom_start:
-                hm = self._parse_hm(custom_start)
-                if hm is not None:
-                    hour = hm // 60
-                    minute = hm % 60
-                    new_cursor = cursor.replace(hour=hour, minute=minute)
-                    if new_cursor < cursor:
-                        new_cursor += timedelta(days=1)
-                    cursor = new_cursor
-
             travel_min = self._parse_hm(row["Travel Time"]) or 0
             stop_min = self._parse_hm(row["Stop Time"]) or 0
 
             arrival = cursor + timedelta(minutes=travel_min)
             departure = arrival + timedelta(minutes=stop_min)
+
+            custom_dep = row.get("Custom Departure")
+            if custom_dep:
+                hm = self._parse_hm(custom_dep)
+                if hm is not None:
+                    hour = hm // 60
+                    minute = hm % 60
+                    new_departure = arrival.replace(hour=hour, minute=minute)
+                    if new_departure < arrival:
+                        new_departure += timedelta(days=1)
+                    departure = new_departure
 
             arrivals.append(arrival.strftime("%Y-%m-%d %H:%M"))
             departures.append(departure.strftime("%Y-%m-%d %H:%M"))
@@ -936,7 +922,6 @@ class RoadtripApp:
             self.tree.insert("", "end", values=(
                 idx,
                 row["Place Name"],
-                row.get("Start Time", ""),
                 row["Distance (mi)"],
                 row["Travel Time"],
                 row["Arrival Time"],
@@ -973,6 +958,9 @@ class RoadtripApp:
         # Current cell value
         current_values = self.tree.item(item, "values")
         current_text = str(current_values[col_index])
+        if col_key == "departure":
+            row_idx = self.tree.index(item)
+            current_text = str(self.df["Custom Departure"][row_idx])
 
         # Create an overlay Entry widget
         entry = tk.Entry(
@@ -1021,15 +1009,17 @@ class RoadtripApp:
         widget.destroy()
 
         # Determine the DataFrame column name
-        df_col = self._col_map[col_key]
+        df_col = self._col_map.get(col_key, col_key)
+        if col_key == "departure":
+            df_col = "Custom Departure"
 
         # Validate based on column type
-        if col_key in ("travel", "stop", "starttime"):
+        if col_key in ("travel", "stop", "departure"):
             # H:MM time fields
-            if col_key == "starttime" and new_value == "":
+            if col_key == "departure" and new_value == "":
                 pass  # empty is allowed
             elif self._parse_hm(new_value) is None:
-                msg = f'"{df_col}" must be in H:MM format (e.g. 1:30) or empty.' if col_key == "starttime" else f'"{df_col}" must be in H:MM format (e.g. 1:30).'
+                msg = f'Override "{df_col}" must be in H:MM format (e.g. 1:30) or empty.' if col_key == "departure" else f'"{df_col}" must be in H:MM format (e.g. 1:30).'
                 messagebox.showerror("Invalid input", msg)
                 return
             col_values = self.df[df_col].to_list()
