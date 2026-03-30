@@ -5,6 +5,7 @@ Fields: Travel Time (min), Stop Time (min), Distance (mi), Place Name
 Data is stored in a Polars DataFrame and displayed in a table view.
 Arrival and Departure times are computed cumulatively from the trip start time.
 """
+
 import tkinter as tk
 from tkinter import ttk, messagebox
 from datetime import datetime, timedelta
@@ -32,7 +33,6 @@ class RoadtripApp:
                 "Distance (mi)": pl.Float64,
                 "Arrival Time": pl.Utf8,
                 "Departure Time": pl.Utf8,
-                "Custom Departure": pl.Utf8,
                 "Is Bold": pl.Boolean,
             }
         )
@@ -45,7 +45,7 @@ class RoadtripApp:
             "distance": "Distance (mi)",
         }
         # Columns that the user may NOT edit (computed)
-        self._readonly_cols = {"stopnum", "arrival"}
+        self._readonly_cols = {"stopnum", "arrival", "departure"}
         # Track the active edit widget
         self._edit_widget: tk.Entry | None = None
         # Track form edit index for the main edit button feature
@@ -386,9 +386,9 @@ class RoadtripApp:
         """Validate the input fields and return (raw_values, distance) or None."""
         placeholders = {
             "Place Name": "e.g. Grand Canyon",
-            "Distance (mi)": "e.g. 85.5",
             "Travel Time": "e.g. 2:30",
             "Stop Time": "e.g. 0:45",
+            "Distance (mi)": "e.g. 85.5",
         }
 
         raw: dict[str, str] = {}
@@ -428,7 +428,6 @@ class RoadtripApp:
             "Distance (mi)": [dist],
             "Arrival Time": [""],
             "Departure Time": [""],
-            "Custom Departure": [""],
             "Is Bold": [False],
         })
 
@@ -436,9 +435,9 @@ class RoadtripApp:
         """Reset all input fields to their placeholders."""
         placeholders = {
             "Place Name": "e.g. Grand Canyon",
-            "Distance (mi)": "e.g. 85.5",
             "Travel Time": "e.g. 2:30",
             "Stop Time": "e.g. 0:45",
+            "Distance (mi)": "e.g. 85.5",
         }
         for key, entry in self.entries.items():
             entry.delete(0, "end")
@@ -772,15 +771,6 @@ class RoadtripApp:
             )
             return
 
-        # Ensure Custom Departure exists
-        if "Start Time" in imported.columns:
-            imported = imported.rename({"Start Time": "Custom Departure"}).with_columns(pl.col("Custom Departure").cast(pl.Utf8).fill_null(""))
-        else:
-            if "Custom Departure" not in imported.columns:
-                imported = imported.with_columns(pl.lit("").alias("Custom Departure"))
-            else:
-                imported = imported.with_columns(pl.col("Custom Departure").cast(pl.Utf8).fill_null(""))
-
         # Ensure correct types
         try:
             imported = imported.with_columns([
@@ -810,7 +800,7 @@ class RoadtripApp:
         # Keep only the columns we care about, in the right order
         imported = imported.select(
             "Place Name", "Travel Time", "Stop Time",
-            "Distance (mi)", "Arrival Time", "Departure Time", "Custom Departure", "Is Bold"
+            "Distance (mi)", "Arrival Time", "Departure Time", "Is Bold"
         )
 
         self.df = imported
@@ -892,17 +882,6 @@ class RoadtripApp:
             arrival = cursor + timedelta(minutes=travel_min)
             departure = arrival + timedelta(minutes=stop_min)
 
-            custom_dep = row.get("Custom Departure")
-            if custom_dep:
-                hm = self._parse_hm(custom_dep)
-                if hm is not None:
-                    hour = hm // 60
-                    minute = hm % 60
-                    new_departure = arrival.replace(hour=hour, minute=minute)
-                    if new_departure < arrival:
-                        new_departure += timedelta(days=1)
-                    departure = new_departure
-
             arrivals.append(arrival.strftime("%Y-%m-%d %H:%M"))
             departures.append(departure.strftime("%Y-%m-%d %H:%M"))
 
@@ -958,9 +937,6 @@ class RoadtripApp:
         # Current cell value
         current_values = self.tree.item(item, "values")
         current_text = str(current_values[col_index])
-        if col_key == "departure":
-            row_idx = self.tree.index(item)
-            current_text = str(self.df["Custom Departure"][row_idx])
 
         # Create an overlay Entry widget
         entry = tk.Entry(
@@ -1009,18 +985,14 @@ class RoadtripApp:
         widget.destroy()
 
         # Determine the DataFrame column name
-        df_col = self._col_map.get(col_key, col_key)
-        if col_key == "departure":
-            df_col = "Custom Departure"
+        df_col = self._col_map[col_key]
 
         # Validate based on column type
-        if col_key in ("travel", "stop", "departure"):
+        if col_key in ("travel", "stop"):
             # H:MM time fields
-            if col_key == "departure" and new_value == "":
-                pass  # empty is allowed
-            elif self._parse_hm(new_value) is None:
-                msg = f'Override "{df_col}" must be in H:MM format (e.g. 1:30) or empty.' if col_key == "departure" else f'"{df_col}" must be in H:MM format (e.g. 1:30).'
-                messagebox.showerror("Invalid input", msg)
+            if self._parse_hm(new_value) is None:
+                messagebox.showerror("Invalid input",
+                                      f'"{df_col}" must be in H:MM format (e.g. 1:30).')
                 return
             col_values = self.df[df_col].to_list()
             col_values[row_idx] = new_value

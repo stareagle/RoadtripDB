@@ -521,10 +521,10 @@ const startYear   = $('startYear');
 const startHour   = $('startHour');
 const startMinute = $('startMinute');
 
-const inputPlace     = $('inputPlace');
+const inputPlace    = $('inputPlace');
 const inputDistance  = $('inputDistance');
-const inputTravel    = $('inputTravel');
-const inputStop      = $('inputStop');
+const inputTravel   = $('inputTravel');
+const inputStop     = $('inputStop');
 
 const btnAdd    = $('btnAdd');
 const btnCancelEdit = $('btnCancelEdit');
@@ -620,19 +620,6 @@ function recalculate() {
     const stopMin   = parseHM(stop.stopTime)   || 0;
     const arrival   = new Date(cursor.getTime() + travelMin * 60000);
     const departure = new Date(arrival.getTime() + stopMin * 60000);
-
-    if (stop.customDeparture) {
-      const depMin = parseHM(stop.customDeparture);
-      if (depMin !== null) {
-        let newDeparture = new Date(arrival.getTime());
-        newDeparture.setHours(Math.floor(depMin / 60), depMin % 60, 0, 0);
-        if (newDeparture < arrival) {
-          newDeparture.setDate(newDeparture.getDate() + 1);
-        }
-        departure.setTime(newDeparture.getTime());
-      }
-    }
-
     stop.arrival   = formatDatetime(arrival);
     stop.departure = formatDatetime(departure);
     cursor = departure;
@@ -656,7 +643,7 @@ function validateInputs() {
   if (parseHM(travel) === null) { toast('Travel Time must be H:MM (e.g. 2:30)'); inputTravel.focus(); return null; }
   if (parseHM(stop) === null) { toast('Stop Time must be H:MM (e.g. 0:45)'); inputStop.focus(); return null; }
 
-  return { place, customDeparture: '', distance: dist, travelTime: travel, stopTime: stop, arrival: '', departure: '', isBold: false };
+  return { place, distance: dist, travelTime: travel, stopTime: stop, arrival: '', departure: '', isBold: false };
 }
 
 function clearInputs() {
@@ -790,7 +777,6 @@ function getTripJSON() {
       "Distance (mi)": s.distance,
       "Arrival Time": s.arrival,
       "Departure Time": s.departure,
-      "Custom Departure": s.customDeparture || '',
       "Is Bold": s.isBold || false
     })),
   };
@@ -919,19 +905,15 @@ function processLoadedTrip(jsonText) {
       return;
     }
 
-    stops = data.stops.map(s => {
-      const customDep = s['Custom Departure'] || s['Start Time'] || '';
-      return {
-        place:      s['Place Name']    || '',
-        customDeparture: customDep,
-        travelTime: String(s['Travel Time'] || '0:00'),
-        stopTime:   String(s['Stop Time']   || '0:00'),
-        distance:   parseFloat(s['Distance (mi)']) || 0,
-        arrival:    s['Arrival Time']  || '',
-        departure:  s['Departure Time'] || '',
-        isBold:     s['Is Bold'] === true,
-      };
-    });
+    stops = data.stops.map(s => ({
+      place:      s['Place Name']    || '',
+      travelTime: String(s['Travel Time'] || '0:00'),
+      stopTime:   String(s['Stop Time']   || '0:00'),
+      distance:   parseFloat(s['Distance (mi)']) || 0,
+      arrival:    s['Arrival Time']  || '',
+      departure:  s['Departure Time'] || '',
+      isBold:     s['Is Bold'] === true,
+    }));
 
     selectedIndex = -1;
     recalculate();
@@ -985,7 +967,7 @@ function render() {
       { value: stop.travelTime, field: 'travelTime' },
       { value: stop.arrival, field: null },     // readonly
       { value: stop.stopTime, field: 'stopTime' },
-      { value: stop.departure, field: 'departure' },
+      { value: stop.departure, field: null },   // readonly
     ];
 
     cells.forEach(cell => {
@@ -1030,7 +1012,7 @@ function startCellEdit(rowIdx, field, td) {
   cancelCellEdit();
 
   const stop = stops[rowIdx];
-  const currentValue = field === 'departure' ? (stop.customDeparture || '') : stop[field];
+  const currentValue = stop[field];
 
   td.classList.add('editing');
   td.textContent = '';
@@ -1074,11 +1056,6 @@ function commitCellEdit() {
   if (field === 'place') {
     if (!newValue) { toast('Place Name cannot be empty'); render(); return; }
     stop.place = newValue;
-  } else if (field === 'departure') {
-    if (newValue && parseHM(newValue) === null) {
-      toast('Override Departure Time must be H:MM'); render(); return;
-    }
-    stop.customDeparture = newValue;
   } else if (field === 'distance') {
     const n = parseFloat(newValue);
     if (isNaN(n)) { toast('Distance must be a number'); render(); return; }
@@ -1109,7 +1086,7 @@ function tabToNextCell(backward) {
   const { rowIdx, field } = editingCell;
 
   // Editable fields in display order
-  const editableFields = ['place', 'distance', 'travelTime', 'stopTime', 'departure'];
+  const editableFields = ['place', 'distance', 'travelTime', 'stopTime'];
   let colPos = editableFields.indexOf(field);
   if (colPos === -1) return;
 
@@ -1138,8 +1115,8 @@ function tabToNextCell(backward) {
     if (nextRow >= rows.length) return;
     const row = rows[nextRow];
 
-    // Map field to cell index: place=1, distance=2, travelTime=3, stopTime=5, departure=6
-    const fieldToCellIdx = { place: 1, distance: 2, travelTime: 3, stopTime: 5, departure: 6 };
+    // Map field to cell index: place=1, distance=2, travelTime=3, stopTime=5
+    const fieldToCellIdx = { place: 1, distance: 2, travelTime: 3, stopTime: 5 };
     const cellIdx = fieldToCellIdx[nextField];
     const td = row.children[cellIdx];
     if (td) startCellEdit(nextRow, nextField, td);
