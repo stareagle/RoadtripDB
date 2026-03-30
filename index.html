@@ -145,7 +145,7 @@
     }
     .input-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(5, 1fr);
       gap: 10px;
     }
     @media (max-width: 700px) {
@@ -427,6 +427,10 @@
           <input id="inputPlace" class="field-input" type="text" placeholder="e.g. Grand Canyon">
         </div>
         <div class="field-group">
+          <label for="inputStartTime">Start Time</label>
+          <input id="inputStartTime" class="field-input" type="text" placeholder="e.g. 08:00 (opt)">
+        </div>
+        <div class="field-group">
           <label for="inputDistance">Distance (mi)</label>
           <input id="inputDistance" class="field-input" type="text" placeholder="e.g. 85.5" inputmode="decimal">
         </div>
@@ -467,6 +471,7 @@
         <tr>
           <th style="width:42px">#</th>
           <th>Place Name</th>
+          <th>Start Time</th>
           <th>Distance (mi)</th>
           <th>Travel Time</th>
           <th>Arrival</th>
@@ -521,10 +526,11 @@ const startYear   = $('startYear');
 const startHour   = $('startHour');
 const startMinute = $('startMinute');
 
-const inputPlace    = $('inputPlace');
+const inputPlace     = $('inputPlace');
+const inputStartTime = $('inputStartTime');
 const inputDistance  = $('inputDistance');
-const inputTravel   = $('inputTravel');
-const inputStop     = $('inputStop');
+const inputTravel    = $('inputTravel');
+const inputStop      = $('inputStop');
 
 const btnAdd    = $('btnAdd');
 const btnCancelEdit = $('btnCancelEdit');
@@ -557,7 +563,7 @@ function init() {
   fileInput.addEventListener('change', loadTrip);
 
   // Enter key in input fields → add entry
-  [inputPlace, inputDistance, inputTravel, inputStop].forEach(el => {
+  [inputPlace, inputStartTime, inputDistance, inputTravel, inputStop].forEach(el => {
     el.addEventListener('keydown', e => { if (e.key === 'Enter') handleEnterAction(); });
   });
 
@@ -616,6 +622,17 @@ function getStartTime() {
 function recalculate() {
   let cursor = getStartTime();
   stops.forEach(stop => {
+    if (stop.startTime) {
+      const startMin = parseHM(stop.startTime);
+      if (startMin !== null) {
+        let newCursor = new Date(cursor.getTime());
+        newCursor.setHours(Math.floor(startMin / 60), startMin % 60, 0, 0);
+        if (newCursor < cursor) {
+          newCursor.setDate(newCursor.getDate() + 1);
+        }
+        cursor = newCursor;
+      }
+    }
     const travelMin = parseHM(stop.travelTime) || 0;
     const stopMin   = parseHM(stop.stopTime)   || 0;
     const arrival   = new Date(cursor.getTime() + travelMin * 60000);
@@ -629,11 +646,13 @@ function recalculate() {
 // ── Validation ─────────────────────────────────────────────────────────
 function validateInputs() {
   const place   = inputPlace.value.trim();
+  const start   = inputStartTime.value.trim();
   const distStr = inputDistance.value.trim();
   const travel  = inputTravel.value.trim();
   const stop    = inputStop.value.trim();
 
   if (!place) { toast('Please fill in Place Name'); inputPlace.focus(); return null; }
+  if (start && parseHM(start) === null) { toast('Start Time must be H:MM'); inputStartTime.focus(); return null; }
   if (!distStr) { toast('Please fill in Distance'); inputDistance.focus(); return null; }
   if (!travel) { toast('Please fill in Travel Time'); inputTravel.focus(); return null; }
   if (!stop) { toast('Please fill in Stop Time'); inputStop.focus(); return null; }
@@ -643,11 +662,12 @@ function validateInputs() {
   if (parseHM(travel) === null) { toast('Travel Time must be H:MM (e.g. 2:30)'); inputTravel.focus(); return null; }
   if (parseHM(stop) === null) { toast('Stop Time must be H:MM (e.g. 0:45)'); inputStop.focus(); return null; }
 
-  return { place, distance: dist, travelTime: travel, stopTime: stop, arrival: '', departure: '', isBold: false };
+  return { place, startTime: start, distance: dist, travelTime: travel, stopTime: stop, arrival: '', departure: '', isBold: false };
 }
 
 function clearInputs() {
   inputPlace.value = '';
+  inputStartTime.value = '';
   inputDistance.value = '';
   inputTravel.value = '';
   inputStop.value = '';
@@ -693,6 +713,7 @@ function startFormEdit() {
   isEditingForm = true;
   
   inputPlace.value = stop.place;
+  inputStartTime.value = stop.startTime || '';
   inputDistance.value = stop.distance;
   inputTravel.value = stop.travelTime;
   inputStop.value = stop.stopTime;
@@ -772,6 +793,7 @@ function getTripJSON() {
     trip_start: formatDatetime(startDt),
     stops: stops.map(s => ({
       "Place Name": s.place,
+      "Start Time": s.startTime || '',
       "Travel Time": s.travelTime,
       "Stop Time": s.stopTime,
       "Distance (mi)": s.distance,
@@ -907,6 +929,7 @@ function processLoadedTrip(jsonText) {
 
     stops = data.stops.map(s => ({
       place:      s['Place Name']    || '',
+      startTime:  s['Start Time']    || '',
       travelTime: String(s['Travel Time'] || '0:00'),
       stopTime:   String(s['Stop Time']   || '0:00'),
       distance:   parseFloat(s['Distance (mi)']) || 0,
@@ -959,10 +982,11 @@ function render() {
       render();
     };
 
-    // Cells: #, Place, Distance, Travel, Arrival, Stop, Departure
+    // Cells: #, Place, Start Time, Distance, Travel, Arrival, Stop, Departure
     const cells = [
       { value: i + 1, field: null },
       { value: stop.place, field: 'place' },
+      { value: stop.startTime || '', field: 'startTime' },
       { value: stop.distance, field: 'distance' },
       { value: stop.travelTime, field: 'travelTime' },
       { value: stop.arrival, field: null },     // readonly
@@ -1056,6 +1080,11 @@ function commitCellEdit() {
   if (field === 'place') {
     if (!newValue) { toast('Place Name cannot be empty'); render(); return; }
     stop.place = newValue;
+  } else if (field === 'startTime') {
+    if (newValue && parseHM(newValue) === null) {
+      toast('Start Time must be H:MM'); render(); return;
+    }
+    stop.startTime = newValue;
   } else if (field === 'distance') {
     const n = parseFloat(newValue);
     if (isNaN(n)) { toast('Distance must be a number'); render(); return; }
@@ -1086,7 +1115,7 @@ function tabToNextCell(backward) {
   const { rowIdx, field } = editingCell;
 
   // Editable fields in display order
-  const editableFields = ['place', 'distance', 'travelTime', 'stopTime'];
+  const editableFields = ['place', 'startTime', 'distance', 'travelTime', 'stopTime'];
   let colPos = editableFields.indexOf(field);
   if (colPos === -1) return;
 
@@ -1115,8 +1144,8 @@ function tabToNextCell(backward) {
     if (nextRow >= rows.length) return;
     const row = rows[nextRow];
 
-    // Map field to cell index: place=1, distance=2, travelTime=3, stopTime=5
-    const fieldToCellIdx = { place: 1, distance: 2, travelTime: 3, stopTime: 5 };
+    // Map field to cell index: place=1, startTime=2, distance=3, travelTime=4, stopTime=6
+    const fieldToCellIdx = { place: 1, startTime: 2, distance: 3, travelTime: 4, stopTime: 6 };
     const cellIdx = fieldToCellIdx[nextField];
     const td = row.children[cellIdx];
     if (td) startCellEdit(nextRow, nextField, td);
