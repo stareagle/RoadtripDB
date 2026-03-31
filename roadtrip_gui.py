@@ -232,7 +232,7 @@ class RoadtripApp:
         # Total trip time
         self.lbl_total_time = tk.Label(
             start_frame, text="Total Trip Time: 0:00",
-            font=("Helvetica", 12, "bold"), bg="#1e1e2e", fg="#e2e2f0"
+            font=("Helvetica", 14, "bold"), bg="#1e1e2e", fg="#e2e2f0"
         )
         self.lbl_total_time.pack(side="right", padx=(0, 24))
 
