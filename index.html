@@ -597,6 +597,20 @@ function formatHM(totalMin) {
   return `${h}:${String(m).padStart(2, '0')}`;
 }
 
+function formatDHM(totalMin) {
+  if (totalMin === 0) return "0 mins";
+  const d = Math.floor(totalMin / 1440);
+  const rem = totalMin % 1440;
+  const h = Math.floor(rem / 60);
+  const m = rem % 60;
+  
+  const parts = [];
+  if (d > 0) parts.push(`${d} day${d !== 1 ? 's' : ''}`);
+  if (h > 0) parts.push(`${h} hr${h !== 1 ? 's' : ''}`);
+  if (m > 0 || parts.length === 0) parts.push(`${m} min${m !== 1 ? 's' : ''}`);
+  return parts.join(" ");
+}
+
 function pad2(n) { return String(n).padStart(2, '0'); }
 
 function formatDatetime(d) {
@@ -630,7 +644,7 @@ function recalculate() {
     cursor = departure;
   });
   const txt = document.getElementById('txtTotalTravelTime');
-  if (txt) txt.textContent = `Total Trip Time: ${formatHM(totalMin)}`;
+  if (txt) txt.textContent = `Total Trip Time: ${formatDHM(totalMin)}`;
 }
 
 // ── Validation ─────────────────────────────────────────────────────────

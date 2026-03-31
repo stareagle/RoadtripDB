@@ -869,6 +869,19 @@ class RoadtripApp:
         m = total_minutes % 60
         return f"{h}:{m:02d}"
 
+    @staticmethod
+    def _format_dhm(total_minutes: int) -> str:
+        """Convert total minutes to 'd h m' string."""
+        if total_minutes == 0: return "0 mins"
+        d = total_minutes // 1440
+        h = (total_minutes % 1440) // 60
+        m = total_minutes % 60
+        parts = []
+        if d > 0: parts.append(f"{d} day{'s' if d != 1 else ''}")
+        if h > 0: parts.append(f"{h} hr{'s' if h != 1 else ''}")
+        if m > 0 or not parts: parts.append(f"{m} min{'s' if m != 1 else ''}")
+        return " ".join(parts)
+
     def _recalculate_times(self) -> None:
         """Recompute Arrival and Departure for every row based on start time."""
         if len(self.df) == 0:
@@ -1065,7 +1078,7 @@ class RoadtripApp:
             ((self._parse_hm(row["Travel Time"]) or 0) + (self._parse_hm(row["Stop Time"]) or 0))
             for row in self.df.iter_rows(named=True)
         )
-        self.lbl_total_time.config(text=f"Total Trip Time: {self._format_hm(total_travel_min)}")
+        self.lbl_total_time.config(text=f"Total Trip Time: {self._format_dhm(total_travel_min)}")
 
         # Enable / disable buttons that require grid data
         if getattr(self, "_editing_idx", None) is not None:
