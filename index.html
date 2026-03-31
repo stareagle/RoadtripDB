@@ -414,6 +414,9 @@
           <input id="startMinute" class="dt-input" type="number" min="0" max="59" inputmode="numeric">
         </div>
       </div>
+      <div style="margin-left:auto; font-size:12pt; font-weight:bold; color:var(--text); display:flex; align-items:center; padding-right:10px;">
+        <span id="txtTotalTravelTime">Total Trip Time: 0:00</span>
+      </div>
     </div>
   </div>
 
@@ -614,16 +617,20 @@ function getStartTime() {
 
 // ── Recalculate Arrival / Departure ────────────────────────────────────
 function recalculate() {
+  let totalMin = 0;
   let cursor = getStartTime();
   stops.forEach(stop => {
     const travelMin = parseHM(stop.travelTime) || 0;
     const stopMin   = parseHM(stop.stopTime)   || 0;
+    totalMin += travelMin;
     const arrival   = new Date(cursor.getTime() + travelMin * 60000);
     const departure = new Date(arrival.getTime() + stopMin * 60000);
     stop.arrival   = formatDatetime(arrival);
     stop.departure = formatDatetime(departure);
     cursor = departure;
   });
+  const txt = document.getElementById('txtTotalTravelTime');
+  if (txt) txt.textContent = `Total Trip Time: ${formatHM(totalMin)}`;
 }
 
 // ── Validation ─────────────────────────────────────────────────────────

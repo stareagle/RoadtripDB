@@ -229,6 +229,13 @@ class RoadtripApp:
         self.start_minute.insert(0, f"{now.minute:02d}")
         self.start_minute.pack(side="left")
 
+        # Total trip time
+        self.lbl_total_time = tk.Label(
+            start_frame, text="Total Trip Time: 0:00",
+            font=("Helvetica", 12, "bold"), bg="#1e1e2e", fg="#e2e2f0"
+        )
+        self.lbl_total_time.pack(side="right", padx=(0, 24))
+
         # ── Input Section ───────────────────────────────────────────────
         input_frame = ttk.LabelFrame(self.root, text="  New Entry  ",
                                       style="Card.TLabelframe", padding=16)
@@ -1052,6 +1059,12 @@ class RoadtripApp:
         self.status_var.set(
             f"{n} {word}  |  Double-click to edit  |  Right-click to delete{dirty_marker}{editing_marker}"
         )
+
+        # Update total travel time label
+        total_travel_min = sum(
+            (self._parse_hm(row["Travel Time"]) or 0) for row in self.df.iter_rows(named=True)
+        )
+        self.lbl_total_time.config(text=f"Total Trip Time: {self._format_hm(total_travel_min)}")
 
         # Enable / disable buttons that require grid data
         if getattr(self, "_editing_idx", None) is not None:
