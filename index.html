@@ -622,7 +622,7 @@ function recalculate() {
   stops.forEach(stop => {
     const travelMin = parseHM(stop.travelTime) || 0;
     const stopMin   = parseHM(stop.stopTime)   || 0;
-    totalMin += travelMin;
+    totalMin += travelMin + stopMin;
     const arrival   = new Date(cursor.getTime() + travelMin * 60000);
     const departure = new Date(arrival.getTime() + stopMin * 60000);
     stop.arrival   = formatDatetime(arrival);

@@ -1062,7 +1062,8 @@ class RoadtripApp:
 
         # Update total travel time label
         total_travel_min = sum(
-            (self._parse_hm(row["Travel Time"]) or 0) for row in self.df.iter_rows(named=True)
+            ((self._parse_hm(row["Travel Time"]) or 0) + (self._parse_hm(row["Stop Time"]) or 0))
+            for row in self.df.iter_rows(named=True)
         )
         self.lbl_total_time.config(text=f"Total Trip Time: {self._format_hm(total_travel_min)}")
 
